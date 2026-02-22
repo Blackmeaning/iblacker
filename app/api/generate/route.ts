@@ -1,17 +1,20 @@
 import { NextResponse } from "next/server";
+import { prisma } from "@/lib/prisma";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
 
-  if (!body?.prompt) {
+  const prompt = body?.prompt?.trim();
+  const mode = body?.mode?.trim() || "Design";
+
+  if (!prompt) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  // Mock output (next step we replace with real AI + agents)
   const result = {
     ok: true,
-    prompt: body.prompt,
-    mode: body.mode ?? "Design",
+    prompt,
+    mode,
     plan: [
       "Understand goal + target audience",
       "Select best template + layout",
@@ -22,11 +25,14 @@ export async function POST(req: Request) {
       {
         type: "text",
         title: "Generated Plan",
-        content:
-          "This is a placeholder. Next step: connect OpenAI/Gemini and multi-agent generation.",
+        content: "Saved to database ✅ (Step 13: real AI + agents).",
       },
     ],
   };
 
-  return NextResponse.json(result);
+  const saved = await prisma.project.create({
+    data: { prompt, mode, result },
+  });
+
+  return NextResponse.json({ ...result, projectId: saved.id });
 }
