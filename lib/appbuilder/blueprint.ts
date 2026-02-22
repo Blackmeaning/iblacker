@@ -10,6 +10,7 @@ Return STRICT JSON only with this shape:
   "description": string,
   "features": string[],
   "pages": string[],
+  "modules": ["auth","db","payments"]
   "apiEndpoints": string[],
   "databaseModels": string[]
 }
