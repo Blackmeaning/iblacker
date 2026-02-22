@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateBlueprint } from "@/lib/appbuilder/blueprint";
+import { generateProjectFiles } from "@/lib/appbuilder/projectGenerator";
 
 export async function POST(req: Request) {
   try {

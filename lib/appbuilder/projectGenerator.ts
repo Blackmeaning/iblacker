@@ -1,4 +1,4 @@
-import { generateBlueprint } from "@/lib/appbuilder/blueprint";
+import { generateProjectFiles } from "@/lib/appbuilder/projectGenerator";
 
 type Blueprint = {
   name?: string;
