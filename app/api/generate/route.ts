@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { generateAI } from "@/lib/ai/router";
 
 export async function POST(req: Request) {
   const body = await req.json().catch(() => null);
@@ -11,28 +12,18 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "prompt is required" }, { status: 400 });
   }
 
-  const result = {
-    ok: true,
-    prompt,
-    mode,
-    plan: [
-      "Understand goal + target audience",
-      "Select best template + layout",
-      "Generate assets (copy, colors, typography)",
-      "Produce final export (web, image, video, etc.)",
-    ],
-    outputs: [
-      {
-        type: "text",
-        title: "Generated Plan",
-        content: "Saved to database ✅ (Step 13: real AI + agents).",
-      },
-    ],
-  };
+  const aiResult = await generateAI({ prompt, mode });
 
   const saved = await prisma.project.create({
-    data: { prompt, mode, result },
+    data: {
+      prompt,
+      mode,
+      result: aiResult,
+    },
   });
 
-  return NextResponse.json({ ...result, projectId: saved.id });
+  return NextResponse.json({
+    ...aiResult,
+    projectId: saved.id,
+  });
 }
