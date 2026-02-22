@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { generateProjectFiles } from "@/lib/appbuilder/projectGenerator";
+import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 
 export async function POST(req: Request) {
   try {
@@ -7,18 +7,14 @@ export async function POST(req: Request) {
     const prompt = body?.prompt?.trim();
 
     if (!prompt) {
-      return NextResponse.json(
-        { error: "prompt required" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
     const blueprint = await generateBlueprint(prompt);
-
     return NextResponse.json(blueprint);
   } catch (e: any) {
     return NextResponse.json(
-      { error: e.message || "builder failed" },
+      { error: "builder_failed", message: e?.message || String(e) },
       { status: 500 }
     );
   }
