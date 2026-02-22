@@ -1,27 +1,19 @@
-import { generateAI } from "@/lib/ai/router";
+<button
+  onClick={async () => {
+    const res = await fetch("/api/app-builder/export", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ prompt })
+    });
 
-export async function generateBlueprint(prompt: string) {
-  const result = await generateAI({
-    prompt: `
-You are an expert SaaS architect.
-
-Generate a JSON blueprint for a full Next.js SaaS app.
-
-Return this structure:
-{
-  "name": string,
-  "description": string,
-  "features": string[],
-  "pages": string[],
-  "apiEndpoints": string[],
-  "databaseModels": string[]
-}
-
-User idea:
-${prompt}
-`,
-    mode: "App Builder",
-  });
-
-  return result;
-}
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "iblacker-app.zip";
+    a.click();
+  }}
+  className="mt-4 bg-white text-black px-4 py-2 rounded-lg"
+>
+  Download Project ZIP
+</button>
