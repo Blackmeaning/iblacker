@@ -9,6 +9,18 @@ export default function Page() {
   const [data, setData] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
 
+  const [modAuth, setModAuth] = useState(true);
+  const [modDb, setModDb] = useState(true);
+  const [modPayments, setModPayments] = useState(true);
+
+  function selectedModules() {
+    const m: string[] = [];
+    if (modAuth) m.push("auth");
+    if (modDb) m.push("db");
+    if (modPayments) m.push("payments");
+    return m;
+  }
+
   async function onGenerate() {
     setLoading(true);
     setError(null);
@@ -21,12 +33,11 @@ export default function Page() {
       const res = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt, mode }),
+        body: JSON.stringify({ prompt, mode, modules: selectedModules() }),
       });
 
       const text = await res.text();
       let json: any = null;
-
       try {
         json = text ? JSON.parse(text) : null;
       } catch {}
@@ -34,8 +45,8 @@ export default function Page() {
       if (!res.ok) {
         throw new Error(json?.message || json?.error || text || "Request failed");
       }
-
       if (!json) throw new Error("Empty response");
+
       setData(json);
     } catch (e: any) {
       setError(e?.message || "Error");
@@ -48,7 +59,7 @@ export default function Page() {
     const res = await fetch("/api/app-builder/export", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ prompt }),
+      body: JSON.stringify({ prompt, modules: selectedModules() }),
     });
 
     if (!res.ok) {
@@ -104,12 +115,42 @@ export default function Page() {
             </button>
           </div>
 
+          <div className="mt-4 flex flex-wrap gap-4 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={modAuth}
+                onChange={(e) => setModAuth(e.target.checked)}
+              />
+              Auth
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={modDb}
+                onChange={(e) => setModDb(e.target.checked)}
+              />
+              Database
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={modPayments}
+                onChange={(e) => setModPayments(e.target.checked)}
+              />
+              Payments
+            </label>
+          </div>
+
           {error && <div className="mt-4 text-sm text-red-300">{error}</div>}
 
           {data && (
             <div className="mt-6 bg-black border border-gray-800 rounded-xl p-5">
               <div className="text-sm text-gray-400 mb-3">
-                Mode: <span className="text-white">{mode}</span>
+                Mode: <span className="text-white">{mode}</span> • Modules:{" "}
+                <span className="text-white">
+                  {selectedModules().join(", ") || "none"}
+                </span>
               </div>
 
               {mode === "App Builder" ? (

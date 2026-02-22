@@ -69,7 +69,7 @@ export async function POST(req: Request) {
 `;
 }
 
-export async function generateProjectFiles(prompt: string) {
+export async function generateProjectFiles(prompt: string, modules: string[] = []) {
   const blueprint = (await generateBlueprint(prompt)) as Blueprint;
 
   const safeName = safeSlug(blueprint.name || "iblacker-app");

@@ -1,6 +1,6 @@
 import { generateAI } from "@/lib/ai/router";
 
-export async function generateBlueprint(prompt: string) {
+export async function generateBlueprint(prompt: string, modules: string[]) {
   const result = await generateAI({
     mode: "App Builder",
     prompt: `
@@ -10,10 +10,13 @@ Return STRICT JSON only with this shape:
   "description": string,
   "features": string[],
   "pages": string[],
-  "modules": ["auth","db","payments"]
   "apiEndpoints": string[],
-  "databaseModels": string[]
+  "databaseModels": string[],
+  "modules": string[]
 }
+
+Requested modules (must reflect in "modules"):
+${JSON.stringify(modules)}
 
 User idea:
 ${prompt}

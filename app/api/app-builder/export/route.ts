@@ -11,12 +11,13 @@ export async function POST(req: Request) {
   try {
     const body = await req.json();
     const prompt = body?.prompt?.trim();
-
+    const modules = Array.isArray(body?.modules) ? body.modules : [];
+    
     if (!prompt) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const { files } = await generateProjectFiles(prompt);
+    const { files } = await generateProjectFiles(prompt, modules);
 
     const stream = new PassThrough();
     const archive = archiver("zip", { zlib: { level: 9 } });
