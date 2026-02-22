@@ -2,8 +2,10 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { PassThrough } from "stream";
-import archiver from "archiver";
 import { generateProjectFiles } from "@/lib/appbuilder/projectGenerator";
+
+// Use require for max TS compatibility with archiver
+const archiver = require("archiver");
 
 export async function POST(req: Request) {
   try {
@@ -19,9 +21,7 @@ export async function POST(req: Request) {
     const stream = new PassThrough();
     const archive = archiver("zip", { zlib: { level: 9 } });
 
-    archive.on("error", (err) => {
-      stream.destroy(err);
-    });
+    archive.on("error", (err: any) => stream.destroy(err));
 
     archive.pipe(stream);
 
