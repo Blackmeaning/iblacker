@@ -74,7 +74,7 @@ export default function Workspace() {
               onChange={(e) => setMode(e.target.value)}
               className="bg-black border border-gray-800 rounded-lg px-4 py-3 text-white"
             >
-              <option>App</option>
+              <option>App Builder</option>
               <option>Design</option>
               <option>Video</option>
               <option>Music</option>
