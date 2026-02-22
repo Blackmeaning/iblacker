@@ -21,12 +21,28 @@ export default function Workspace() {
         body: JSON.stringify({ prompt, mode }),
       });
 
-      const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || "Request failed");
+      const text = await res.text();
+      let json: any = null;
+
+      try {
+        json = text ? JSON.parse(text) : null;
+      } catch {
+        // ignore parse error
+      }
+
+      if (!res.ok) {
+        throw new Error(
+          json?.message || json?.error || text || "Request failed"
+        );
+      }
+
+      if (!json) {
+        throw new Error("Server returned empty response");
+      }
 
       setData(json);
     } catch (e: any) {
-      setError(e.message || "Error");
+      setError(e?.message || "Error");
     } finally {
       setLoading(false);
     }
@@ -37,11 +53,13 @@ export default function Workspace() {
       <div className="max-w-5xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-2">Creative Workspace</h1>
         <p className="text-gray-400 mb-8">
-          Tell IBlacker what you want. It will generate a plan + outputs.
+          Tell IBlacker what you want. It will generate a structured AI plan.
         </p>
 
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
-          <label className="block text-sm text-gray-300 mb-2">AI Command</label>
+          <label className="block text-sm text-gray-300 mb-2">
+            AI Command
+          </label>
 
           <div className="flex flex-col md:flex-row gap-3">
             <input
@@ -81,7 +99,7 @@ export default function Workspace() {
           {data && (
             <div className="mt-6 bg-black border border-gray-800 rounded-xl p-5">
               <div className="text-sm text-gray-400 mb-2">
-                Mode: <span className="text-white">{data.mode}</span>
+                Mode: <span className="text-white">{mode}</span>
               </div>
 
               <h2 className="text-lg font-semibold mb-3">Plan</h2>
@@ -93,7 +111,7 @@ export default function Workspace() {
 
               <h2 className="text-lg font-semibold mt-6 mb-3">Output</h2>
               <div className="text-gray-300 whitespace-pre-wrap">
-                {data.outputs?.[0]?.content}
+                {data.output}
               </div>
             </div>
           )}
