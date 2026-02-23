@@ -1,18 +1,18 @@
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
-    <main className="min-h-screen bg-black text-white flex flex-col items-center justify-center px-6 text-center">
-      <h1 className="text-5xl md:text-6xl font-bold mb-6">IBlacker</h1>
-
-      <p className="text-lg md:text-xl text-gray-400 max-w-2xl mb-10">
-        The AI Creative & Product OS. Build apps, designs, videos, and campaigns in one place.
+    <main style={{ padding: 40, fontFamily: "system-ui" }}>
+      <h1 style={{ fontSize: 36, fontWeight: 900 }}>IBlacker</h1>
+      <p style={{ opacity: 0.7 }}>
+        If you see this, the app is running. Check /api/health/error.
       </p>
-
-      <a
-        href="/dashboard"
-        className="px-8 py-3 rounded-lg bg-white text-black font-semibold hover:bg-gray-200 transition"
-      >
-        Enter IBlacker
-      </a>
+      <ul style={{ lineHeight: 2, marginTop: 16 }}>
+        <li><a href="/workspace">Workspace</a></li>
+        <li><a href="/projects">Projects</a></li>
+        <li><a href="/api/health">API Health</a></li>
+        <li><a href="/api/health/error">DB Health</a></li>
+      </ul>
     </main>
   );
 }
