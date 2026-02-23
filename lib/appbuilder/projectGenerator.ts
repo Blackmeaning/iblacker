@@ -7,7 +7,6 @@ type Blueprint = {
   pages?: string[];
   apiEndpoints?: string[];
   databaseModels?: string[];
-  modules?: string[];
 };
 
 function safeSlug(input: string) {
@@ -70,7 +69,7 @@ export async function POST(req: Request) {
 `;
 }
 
-/** ===== Step 18.6.1 helpers ===== */
+/** ===== modules helpers (missing in your file) ===== */
 function has(modules: string[], name: string) {
   return modules.includes(name);
 }
@@ -103,44 +102,37 @@ function envExample(modules: string[]) {
   return lines.join("\n");
 }
 
-/** ===== Main generator ===== */
 export async function generateProjectFiles(
   prompt: string,
   modules: string[] = []
 ) {
   const blueprint = (await generateBlueprint(prompt, modules)) as Blueprint;
-
   const safeName = safeSlug(blueprint.name || "iblacker-app");
 
-  /** ===== Step 18.6.2 module deps ===== */
+  /** ===== Step 18.6.2 (FIXED) deps for EXPORTED APP ===== */
   const deps: Record<string, string> = {
-    next: "^15.0.0",
-    react: "^18.0.0",
-    "react-dom": "^18.0.0",
+    next: "16.1.6",
+    react: "19.2.3",
+    "react-dom": "19.2.3",
   };
 
   const devDeps: Record<string, string> = {
-    typescript: "^5.0.0",
-    "@types/node": "^20.0.0",
-    "@types/react": "^18.0.0",
-    "@types/react-dom": "^18.0.0",
-    tailwindcss: "^3.4.0",
-    postcss: "^8.4.0",
-    autoprefixer: "^10.4.0",
+    typescript: "^5",
+    eslint: "^9",
+    "eslint-config-next": "16.1.6",
+    tailwindcss: "^4",
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
   };
 
-  if (has(modules, "auth")) {
-    deps["next-auth"] = "^5.0.0";
-  }
-
+  if (has(modules, "auth")) deps["next-auth"] = "^5.0.0";
   if (has(modules, "db")) {
-    deps["@prisma/client"] = "^6.0.0";
-    devDeps["prisma"] = "^6.0.0";
+    deps["@prisma/client"] = "^6.19.2";
+    devDeps["prisma"] = "^6.19.2";
   }
-
-  if (has(modules, "payments")) {
-    deps["stripe"] = "^16.0.0";
-  }
+  if (has(modules, "payments")) deps["stripe"] = "^16.0.0";
 
   const pkg = {
     name: safeName,
@@ -150,8 +142,12 @@ export async function generateProjectFiles(
       dev: "next dev",
       build: "next build",
       start: "next start",
+      lint: "eslint",
       ...(has(modules, "db")
-        ? { "db:push": "prisma db push", "db:gen": "prisma generate" }
+        ? {
+            "db:gen": "prisma generate",
+            "db:push": "prisma db push",
+          }
         : {}),
     },
     dependencies: deps,
@@ -184,27 +180,27 @@ npm run dev
 \`\`\`
 `;
 
-  const globalsCss = `@tailwind base;
-@tailwind components;
-@tailwind utilities;
+  /** Tailwind v4 correct content */
+  const globalsCss = `@import "tailwindcss";
 
 :root { color-scheme: dark; }
 body { background: #000; color: #fff; }
 `;
 
+  /** Tailwind v4 correct postcss */
+  const postcssConfig = `module.exports = {
+  plugins: {
+    "@tailwindcss/postcss": {},
+  },
+};
+`;
+
+  // tailwind.config.js is optional in v4, but keeping it is fine
   const tailwindConfig = `/** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ["./app/**/*.{js,ts,jsx,tsx}"],
   theme: { extend: {} },
   plugins: [],
-};
-`;
-
-  const postcssConfig = `module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
 };
 `;
 
@@ -251,7 +247,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             ${blueprint.name || "Generated App"}
           </a>
           <a href="/dashboard" style={{ opacity: 0.8, color: "white" }}>Dashboard</a>
-          ${has(modules, "auth") ? `<a href="/signin" style={{ opacity: 0.8, color: "white" }}>Sign in</a>` : ""}
+          ${has(modules, "auth") ? `<a href="/signin" style={{ opacity: 0.8, color: "white" }}>Sign in</a>` : ``}
           <span style={{ marginLeft: "auto", opacity: 0.6 }}>by IBlacker</span>
         </div>
         {children}
@@ -297,9 +293,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "app/dashboard/page.tsx": dashboard,
   };
 
-  /** ===== Step 18.6.3 module files ===== */
-
-  // AUTH module
+  /** ===== Optional module files ===== */
   if (has(modules, "auth")) {
     files["app/api/auth/[...nextauth]/route.ts"] = `import NextAuth from "next-auth";
 import Google from "next-auth/providers/google";
@@ -317,7 +311,6 @@ export { handler as GET, handler as POST };
 `;
 
     files["app/signin/page.tsx"] = `"use client";
-
 import { signIn } from "next-auth/react";
 
 export default function SignIn() {
@@ -326,13 +319,7 @@ export default function SignIn() {
       <h1 style={{ fontSize: 28, fontWeight: 800, marginBottom: 12 }}>Sign in</h1>
       <button
         onClick={() => signIn("google")}
-        style={{
-          background: "white",
-          color: "black",
-          fontWeight: 700,
-          padding: "10px 16px",
-          borderRadius: 10,
-        }}
+        style={{ background: "white", color: "black", fontWeight: 700, padding: "10px 16px", borderRadius: 10 }}
       >
         Sign in with Google
       </button>
@@ -342,7 +329,6 @@ export default function SignIn() {
 `;
   }
 
-  // DB module
   if (has(modules, "db")) {
     files["prisma/schema.prisma"] = `generator client {
   provider = "prisma-client-js"
@@ -361,22 +347,8 @@ model Project {
   result    Json?
 }
 `;
-
-    files["lib/prisma.ts"] = `import { PrismaClient } from "@prisma/client";
-
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
-`;
   }
 
-  // PAYMENTS module
   if (has(modules, "payments")) {
     files["lib/stripe.ts"] = `import Stripe from "stripe";
 
@@ -410,7 +382,7 @@ export async function POST() {
 `;
   }
 
-  /** ===== Generate pages from blueprint.pages ===== */
+  /** ===== Generated pages ===== */
   const pages = (blueprint.pages || [])
     .map(normalizePagePath)
     .filter(Boolean)
@@ -425,7 +397,7 @@ export async function POST() {
     );
   }
 
-  /** ===== Generate API routes from blueprint.apiEndpoints ===== */
+  /** ===== Generated API routes ===== */
   const apis = (blueprint.apiEndpoints || [])
     .map(normalizeApiPath)
     .filter(Boolean);
@@ -434,8 +406,5 @@ export async function POST() {
     files[`app/api/${ep}/route.ts`] = apiTemplate(ep);
   }
 
-  return {
-    blueprint,
-    files,
-  };
+  return { blueprint, files };
 }
