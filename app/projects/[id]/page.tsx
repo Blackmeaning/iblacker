@@ -22,7 +22,7 @@ export default async function ProjectDetailsPage({
         <div className="mx-auto max-w-4xl px-6 py-10">
           <h1 className="text-3xl font-bold">Project not found</h1>
           <p className="mt-2 text-white/60">
-            The project id doesn’t exist (or was deleted).
+            This project id doesn’t exist (or was deleted).
           </p>
           <Link
             href="/projects"
@@ -57,13 +57,9 @@ export default async function ProjectDetailsPage({
             {new Date(project.createdAt).toLocaleString()}
           </div>
 
-          <div className="mt-3 text-lg font-semibold">
-            {project.mode}
-          </div>
+          <div className="mt-3 text-lg font-semibold">{project.mode}</div>
 
-          <div className="mt-2 text-white/80">
-            {project.prompt}
-          </div>
+          <div className="mt-2 text-white/80">{project.prompt}</div>
 
           <h2 className="mt-8 text-lg font-semibold">Result</h2>
           <pre className="mt-3 overflow-auto rounded-xl border border-white/10 bg-black p-4 text-sm text-white/80">
