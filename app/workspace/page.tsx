@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Page() {
   const [prompt, setPrompt] = useState("");
@@ -21,10 +21,29 @@ export default function Page() {
     return m;
   }
 
+  // load old project via ?load=<id>
+  useEffect(() => {
+    const url = new URL(window.location.href);
+    const id = url.searchParams.get("load");
+    if (!id) return;
+
+    (async () => {
+      try {
+        const res = await fetch(`/api/projects/${id}`);
+        const json = await res.json();
+        if (!res.ok) throw new Error(json?.message || "Failed to load project");
+        setPrompt(json.project.prompt || "");
+        setMode(json.project.mode || "App Builder");
+        setData(json.project.result || null);
+      } catch (e: any) {
+        setError(e?.message || "Load error");
+      }
+    })();
+  }, []);
+
   async function onGenerate() {
     setLoading(true);
     setError(null);
-    setData(null);
 
     try {
       const endpoint =
@@ -82,7 +101,7 @@ export default function Page() {
       <div className="max-w-5xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-2">Creative Workspace</h1>
         <p className="text-gray-400 mb-8">
-          App Builder generates a blueprint and exports a working Next.js project ZIP.
+          Open an old project, edit prompt, regenerate, export again.
         </p>
 
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
@@ -124,7 +143,6 @@ export default function Page() {
               />
               Auth
             </label>
-
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -133,7 +151,6 @@ export default function Page() {
               />
               Database
             </label>
-
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -148,40 +165,23 @@ export default function Page() {
 
           {data && (
             <div className="mt-6 bg-black border border-gray-800 rounded-xl p-5">
-              <div className="text-sm text-gray-400 mb-3">
-                Mode: <span className="text-white">{mode}</span> • Modules:{" "}
-                <span className="text-white">
-                  {selectedModules().join(", ") || "none"}
-                </span>
-              </div>
-
-              {mode === "App Builder" ? (
-                <>
-                  <h2 className="text-lg font-semibold mb-3">Blueprint</h2>
-                  <pre className="text-gray-300 whitespace-pre-wrap text-sm overflow-auto">
-                    {JSON.stringify(data, null, 2)}
-                  </pre>
-
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm text-gray-400">
+                  Mode: <span className="text-white">{mode}</span>
+                </div>
+                {mode === "App Builder" && (
                   <button
                     onClick={onDownloadZip}
-                    className="mt-4 bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition"
+                    className="bg-white text-black px-4 py-2 rounded-lg font-semibold hover:bg-gray-200 transition"
                   >
                     Download Project ZIP
                   </button>
-                </>
-              ) : (
-                <>
-                  <h2 className="text-lg font-semibold mb-3">Plan</h2>
-                  <ol className="list-decimal pl-6 text-gray-300 space-y-1">
-                    {data.plan?.map((x: string, i: number) => (
-                      <li key={i}>{x}</li>
-                    ))}
-                  </ol>
+                )}
+              </div>
 
-                  <h2 className="text-lg font-semibold mt-6 mb-3">Output</h2>
-                  <div className="text-gray-300 whitespace-pre-wrap">{data.output}</div>
-                </>
-              )}
+              <pre className="mt-4 text-xs text-gray-300 overflow-auto whitespace-pre-wrap">
+                {JSON.stringify(data, null, 2)}
+              </pre>
             </div>
           )}
         </div>
