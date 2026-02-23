@@ -1,32 +1,38 @@
 import Link from "next/link";
-import { prisma } from "@/lib/prisma";
 
-export const dynamic = "force-dynamic";
+type Project = {
+  id: string;
+  prompt: string;
+  mode: string;
+  createdAt: string;
+  result: any;
+};
 
-export default async function Page({ params }: { params: { id: string } }) {
-  const id = params?.id;
+async function getProject(id: string): Promise<Project | null> {
+  const res = await fetch(
+    `${process.env.NEXT_PUBLIC_BASE_URL ?? ""}/api/projects/${id}`,
+    { cache: "no-store" }
+  );
 
-  const project = await prisma.project.findUnique({
-    where: { id },
-    select: {
-      id: true,
-      prompt: true,
-      mode: true,
-      createdAt: true,
-      result: true,
-    },
-  });
+  if (!res.ok) return null;
+  const data = await res.json();
+  return data.project || null;
+}
+
+export default async function ProjectDetailsPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const project = await getProject(id);
 
   if (!project) {
     return (
-      <main className="min-h-screen bg-black text-white">
-        <div className="max-w-3xl mx-auto px-6 py-10">
-          <h1 className="text-3xl font-bold">Project not found</h1>
-          <p className="text-gray-400 mt-2 break-all">ID: {id}</p>
-          <Link
-            href="/projects"
-            className="inline-block mt-6 bg-white text-black font-semibold rounded-lg px-4 py-2 hover:bg-gray-200"
-          >
+      <main className="min-h-screen bg-black text-white px-6 py-10">
+        <div className="max-w-3xl mx-auto">
+          <h1 className="text-2xl font-bold">Project not found</h1>
+          <Link className="text-gray-300 underline mt-4 inline-block" href="/projects">
             Back to Projects
           </Link>
         </div>
@@ -35,44 +41,43 @@ export default async function Page({ params }: { params: { id: string } }) {
   }
 
   return (
-    <main className="min-h-screen bg-black text-white">
-      <div className="max-w-5xl mx-auto px-6 py-10">
-        <div className="flex items-center justify-between gap-4 mb-8">
+    <main className="min-h-screen bg-black text-white px-6 py-10">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex items-center justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold">Project</h1>
-            <p className="text-gray-400 text-sm break-all">ID: {project.id}</p>
+            <h1 className="text-3xl font-extrabold">Project</h1>
+            <p className="text-gray-400 mt-2">
+              {project.mode} • {new Date(project.createdAt).toLocaleString()}
+            </p>
           </div>
-          <div className="flex gap-3">
-            <Link
-              href="/projects"
-              className="border border-gray-700 rounded-lg px-4 py-2 hover:bg-gray-900"
-            >
-              Back
-            </Link>
-            <Link
-              href={`/workspace?load=${project.id}`}
-              className="bg-white text-black font-semibold rounded-lg px-4 py-2 hover:bg-gray-200"
-            >
-              Open in Workspace
-            </Link>
-          </div>
+
+          <Link
+            href="/projects"
+            className="border border-gray-700 text-white font-semibold rounded-lg px-5 py-3 hover:bg-gray-900 transition"
+          >
+            Back
+          </Link>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 mb-4">
-          <div className="text-sm text-gray-400">
-            Mode: <span className="text-white">{project.mode}</span> •{" "}
-            {new Date(project.createdAt).toLocaleString()}
-          </div>
-
-          <div className="mt-3 text-sm text-gray-400">Prompt</div>
-          <div className="text-white whitespace-pre-wrap">{project.prompt}</div>
+        <div className="mt-8 bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="text-sm text-gray-400 mb-2">Prompt</div>
+          <div className="text-lg font-semibold">{project.prompt}</div>
         </div>
 
-        <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
-          <div className="text-sm text-gray-400 mb-2">Saved Result JSON</div>
-          <pre className="bg-black border border-gray-800 rounded-xl p-4 text-xs overflow-auto text-gray-300">
+        <div className="mt-4 bg-gray-900 border border-gray-800 rounded-xl p-6">
+          <div className="text-sm text-gray-400 mb-2">Result (raw JSON)</div>
+          <pre className="text-xs text-gray-200 whitespace-pre-wrap break-words">
             {JSON.stringify(project.result, null, 2)}
           </pre>
+        </div>
+
+        <div className="mt-6 flex gap-3">
+          <Link
+            href="/workspace"
+            className="bg-white text-black font-semibold rounded-lg px-6 py-3 hover:bg-gray-200 transition"
+          >
+            Create New
+          </Link>
         </div>
       </div>
     </main>

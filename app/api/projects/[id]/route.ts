@@ -1,14 +1,12 @@
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-export const dynamic = "force-dynamic";
+import type { NextRequest } from "next/server";
 
 export async function GET(
   _req: NextRequest,
-  context: { params: Promise<{ id: string }> }
+  ctx: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await context.params;
+  const { id } = await ctx.params;
 
   const project = await prisma.project.findUnique({
     where: { id },
@@ -16,13 +14,13 @@ export async function GET(
       id: true,
       prompt: true,
       mode: true,
-      createdAt: true,
       result: true,
+      createdAt: true,
     },
   });
 
   if (!project) {
-    return NextResponse.json({ error: "not_found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
   return NextResponse.json({ project });
