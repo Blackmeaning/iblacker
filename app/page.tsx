@@ -1,30 +1,38 @@
-// app/page.tsx
 import Link from "next/link";
 
-export default function Home() {
+export default function HomePage() {
   return (
-    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center bg-black">
-      <div className="max-w-3xl w-full px-6 text-center">
-        <h1 className="text-6xl md:text-7xl font-extrabold tracking-tight">
-          IBlacker
-        </h1>
+    <main className="min-h-[calc(100vh-64px)] bg-black text-white">
+      <div className="mx-auto max-w-6xl px-6 py-16 flex items-center justify-center">
+        <div className="text-center max-w-2xl">
+          <h1 className="text-5xl md:text-6xl font-extrabold tracking-tight">
+            IBlacker
+          </h1>
 
-        <p className="mt-4 text-lg md:text-xl text-white/70">
-          Design. Generate. Build.
-        </p>
+          <p className="mt-5 text-white/70 text-lg md:text-xl">
+            Design. Generate. Build.
+          </p>
 
-        <div className="mt-10 flex items-center justify-center">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 font-semibold text-black hover:bg-white/90 transition"
-          >
-            Enter Dashboard
-          </Link>
+          <div className="mt-10 flex items-center justify-center gap-4">
+            <Link
+              href="/dashboard"
+              className="bg-white text-black font-semibold px-7 py-3 rounded-xl hover:bg-gray-200 transition"
+            >
+              Enter
+            </Link>
+
+            <Link
+              href="/workspace"
+              className="border border-white/20 text-white font-semibold px-7 py-3 rounded-xl hover:border-white/40 transition"
+            >
+              Open Workspace
+            </Link>
+          </div>
+
+          <p className="mt-8 text-sm text-white/50">
+            Your AI workspace to generate apps, designs, and exports — with history.
+          </p>
         </div>
-
-        <p className="mt-6 text-sm text-white/40">
-          If you see this page, the platform is running ✅
-        </p>
       </div>
     </main>
   );

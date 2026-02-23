@@ -1,4 +1,3 @@
-// app/api/projects/[id]/route.ts
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
@@ -19,10 +18,19 @@ export async function GET(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
-    return NextResponse.json({ project });
+    // Make it safely serializable
+    const safe = {
+      id: project.id,
+      prompt: project.prompt,
+      mode: project.mode,
+      result: project.result,
+      createdAt: project.createdAt.toISOString(),
+    };
+
+    return NextResponse.json({ project: safe });
   } catch (e: any) {
     return NextResponse.json(
-      { error: e?.message || "Failed to load project" },
+      { error: e?.message || "Failed" },
       { status: 500 }
     );
   }

@@ -1,4 +1,3 @@
-// app/projects/page.tsx
 import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 
@@ -9,18 +8,12 @@ export default async function ProjectsPage() {
   const projects = await prisma.project.findMany({
     orderBy: { createdAt: "desc" },
     take: 50,
-    select: {
-      id: true,
-      prompt: true,
-      mode: true,
-      createdAt: true,
-    },
   });
 
   return (
-    <main className="min-h-screen bg-black text-white">
+    <main className="min-h-[calc(100vh-64px)] bg-black text-white">
       <div className="mx-auto max-w-6xl px-6 py-10">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-4xl font-extrabold">Projects</h1>
             <p className="mt-2 text-white/60">
@@ -30,44 +23,42 @@ export default async function ProjectsPage() {
 
           <Link
             href="/workspace"
-            className="rounded-xl bg-white px-5 py-3 font-semibold text-black hover:bg-white/90 transition"
+            className="bg-white text-black px-5 py-3 rounded-xl font-semibold hover:bg-gray-200 transition"
           >
             New Project
           </Link>
         </div>
 
-        <div className="mt-8 rounded-2xl border border-white/10 bg-white/5 overflow-hidden">
+        <div className="mt-8">
           {projects.length === 0 ? (
-            <div className="p-6 text-white/70">
-              <div className="font-semibold">No projects yet.</div>
-              <div className="mt-1 text-sm text-white/50">
-                Go to Workspace, generate something, then come back here.
-              </div>
+            <div className="border border-white/10 bg-white/5 rounded-2xl p-6 text-white/70">
+              No projects yet. Go to Workspace → Generate something → come back here.
             </div>
           ) : (
-            <ul className="divide-y divide-white/10">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {projects.map((p) => (
-                <li key={p.id} className="p-5 hover:bg-white/5 transition">
-                  <Link href={`/projects/${p.id}`} className="block">
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <div className="text-sm text-white/50">
-                          {new Date(p.createdAt).toLocaleString()}
-                        </div>
-                        <div className="mt-1 font-semibold">
-                          {p.mode} •{" "}
-                          <span className="text-white/80">{p.prompt}</span>
-                        </div>
-                      </div>
-
-                      <div className="text-sm text-white/60">
-                        Open →
-                      </div>
+                <Link
+                  key={p.id}
+                  href={`/projects/${p.id}`}
+                  className="border border-white/10 bg-white/5 rounded-2xl p-5 hover:border-white/25 transition"
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="text-sm text-white/60">{p.mode}</div>
+                    <div className="text-xs text-white/40">
+                      {p.createdAt.toISOString().slice(0, 19).replace("T", " ")}
                     </div>
-                  </Link>
-                </li>
+                  </div>
+
+                  <div className="mt-3 font-semibold line-clamp-2">
+                    {p.prompt}
+                  </div>
+
+                  <div className="mt-3 text-sm text-white/60">
+                    Open →
+                  </div>
+                </Link>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>
