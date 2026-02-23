@@ -1,40 +1,45 @@
-import "./globals.css";
+// app/layout.tsx
+import type { Metadata } from "next";
 import Link from "next/link";
+import "./globals.css";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "IBlacker",
-  description: "All-in-one creative OS",
+  description: "Design. Generate. Build.",
 };
+
+function Header() {
+  return (
+    <header className="border-b border-white/10 bg-black/40 backdrop-blur">
+      <div className="mx-auto max-w-6xl px-6 py-4 flex items-center justify-between">
+        {/* Logo -> Home */}
+        <Link href="/" className="text-xl font-bold tracking-tight text-white">
+          IBlacker
+        </Link>
+
+        <nav className="flex items-center gap-6 text-sm text-white/80">
+          <Link className="hover:text-white" href="/workspace">
+            Workspace
+          </Link>
+          <Link className="hover:text-white" href="/projects">
+            Projects
+          </Link>
+          <Link className="hover:text-white" href="/settings">
+            Settings
+          </Link>
+        </nav>
+      </div>
+    </header>
+  );
+}
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
       <body className="bg-black text-white">
-        <header className="h-16 border-b border-gray-800">
-          <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between">
-            {/* LOGO NAME -> HOME */}
-            <Link href="/" className="font-bold text-lg tracking-tight">
-              IBlacker
-            </Link>
-
-            <nav className="flex gap-6 text-sm text-gray-300">
-              <Link href="/workspace" className="hover:text-white">
-                Workspace
-              </Link>
-              <Link href="/projects" className="hover:text-white">
-                Projects
-              </Link>
-              <Link href="/settings" className="hover:text-white">
-                Settings
-              </Link>
-            </nav>
-          </div>
-        </header>
-
+        <Header />
         {children}
       </body>
     </html>
