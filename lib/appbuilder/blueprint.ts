@@ -23,5 +23,5 @@ ${prompt}
 `,
   });
 
-  return result;
+  return result as any;
 }

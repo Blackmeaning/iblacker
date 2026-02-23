@@ -82,7 +82,7 @@ export default function Page() {
       <div className="max-w-5xl mx-auto px-6 py-10">
         <h1 className="text-3xl font-bold mb-2">Creative Workspace</h1>
         <p className="text-gray-400 mb-8">
-          App Builder generates a blueprint and can export a project ZIP.
+          App Builder generates a blueprint and exports a working Next.js project ZIP.
         </p>
 
         <div className="bg-gray-900 rounded-xl p-6 border border-gray-800">
@@ -124,6 +124,7 @@ export default function Page() {
               />
               Auth
             </label>
+
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -132,6 +133,7 @@ export default function Page() {
               />
               Database
             </label>
+
             <label className="flex items-center gap-2">
               <input
                 type="checkbox"
@@ -177,9 +179,7 @@ export default function Page() {
                   </ol>
 
                   <h2 className="text-lg font-semibold mt-6 mb-3">Output</h2>
-                  <div className="text-gray-300 whitespace-pre-wrap">
-                    {data.output}
-                  </div>
+                  <div className="text-gray-300 whitespace-pre-wrap">{data.output}</div>
                 </>
               )}
             </div>

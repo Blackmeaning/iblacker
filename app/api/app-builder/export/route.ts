@@ -2,9 +2,8 @@ export const runtime = "nodejs";
 
 import { NextResponse } from "next/server";
 import { PassThrough } from "stream";
-import { generateProjectFiles } from "@/lib/appbuilder/projectGenerator";
+import { generateProjectFiles } from "../../../../lib/appbuilder/projectGenerator";
 
-// Use require for max TS compatibility with archiver
 const archiver = require("archiver");
 
 export async function POST(req: Request) {
@@ -12,7 +11,7 @@ export async function POST(req: Request) {
     const body = await req.json();
     const prompt = body?.prompt?.trim();
     const modules = Array.isArray(body?.modules) ? body.modules : [];
-    
+
     if (!prompt) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
@@ -23,7 +22,6 @@ export async function POST(req: Request) {
     const archive = archiver("zip", { zlib: { level: 9 } });
 
     archive.on("error", (err: any) => stream.destroy(err));
-
     archive.pipe(stream);
 
     for (const [filePath, content] of Object.entries(files)) {
