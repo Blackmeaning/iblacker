@@ -1,21 +1,9 @@
-import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import Navbar from "./components/Navbar";
+import Link from "next/link";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
-
-export const metadata: Metadata = {
+export const metadata = {
   title: "IBlacker",
-  description: "AI Creative & Product Operating System",
+  description: "All-in-one creative OS",
 };
 
 export default function RootLayout({
@@ -25,11 +13,29 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-black text-white`}
-      >
-        <Navbar />
-        <main className="min-h-screen">{children}</main>
+      <body className="bg-black text-white">
+        <header className="h-16 border-b border-gray-800">
+          <div className="max-w-6xl mx-auto h-full px-6 flex items-center justify-between">
+            {/* LOGO NAME -> HOME */}
+            <Link href="/" className="font-bold text-lg tracking-tight">
+              IBlacker
+            </Link>
+
+            <nav className="flex gap-6 text-sm text-gray-300">
+              <Link href="/workspace" className="hover:text-white">
+                Workspace
+              </Link>
+              <Link href="/projects" className="hover:text-white">
+                Projects
+              </Link>
+              <Link href="/settings" className="hover:text-white">
+                Settings
+              </Link>
+            </nav>
+          </div>
+        </header>
+
+        {children}
       </body>
     </html>
   );
