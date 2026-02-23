@@ -4,13 +4,13 @@ import { prisma } from "@/lib/prisma";
 
 export const dynamic = "force-dynamic";
 
-export default async function ProjectDetailsPage({
-  params,
-}: {
-  params: { id: string };
-}) {
+export default async function ProjectDetailsPage(props: any) {
+  const id: string | undefined = props?.params?.id;
+
+  if (!id) return notFound();
+
   const project = await prisma.project.findUnique({
-    where: { id: params.id },
+    where: { id },
     select: {
       id: true,
       createdAt: true,
