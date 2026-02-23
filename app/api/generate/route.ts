@@ -1,31 +1,35 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
-import { generateAI } from "@/lib/ai/router";
+import { prisma } from "../../../lib/prisma";
+import { generateAI } from "../../../lib/ai/router";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const mode = body?.mode?.trim() || "Design";
 
     if (!prompt) {
-      return NextResponse.json({ error: "prompt is required" }, { status: 400 });
+      return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const aiResult = await generateAI({ prompt, mode });
-
-    const saved = await prisma.project.create({
-      data: { prompt, mode, result: aiResult },
+    const result = await generateAI({
+      prompt,
+      mode,
     });
 
-    return NextResponse.json({ ...aiResult, projectId: saved.id });
-  } catch (err: any) {
-    // ALWAYS return JSON
-    return NextResponse.json(
-      {
-        error: "generate_failed",
-        message: err?.message || String(err),
+    const saved = await prisma.project.create({
+      data: {
+        prompt,
+        mode,
+        result: result as any,
       },
+      select: { id: true },
+    });
+
+    return NextResponse.json({ ok: true, mode, result, projectId: saved.id });
+  } catch (e: any) {
+    return NextResponse.json(
+      { error: "generate_failed", message: e?.message || String(e) },
       { status: 500 }
     );
   }

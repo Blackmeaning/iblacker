@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateBlueprint } from "../../../lib/appbuilder/blueprint";
+import { prisma } from "../../../lib/prisma";
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +13,17 @@ export async function POST(req: Request) {
     }
 
     const blueprint = await generateBlueprint(prompt, modules);
-    return NextResponse.json(blueprint);
+
+    const saved = await prisma.project.create({
+      data: {
+        prompt,
+        mode: "App Builder",
+        result: blueprint as any,
+      },
+      select: { id: true },
+    });
+
+    return NextResponse.json({ ...blueprint, projectId: saved.id });
   } catch (e: any) {
     return NextResponse.json(
       { error: "builder_failed", message: e?.message || String(e) },
