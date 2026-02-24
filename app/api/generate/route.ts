@@ -1,15 +1,12 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAI } from "@/lib/ai/router";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const session = await getServerSession(authOptions);
-
     const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const mode = body?.mode?.trim() || "Design";
@@ -18,15 +15,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
+    const session = await auth();
+    // @ts-expect-error added by types/next-auth.d.ts
+    const userId: string | null = session?.user?.id ?? null;
+
     const result = await generateAI({ prompt, mode });
 
+    const data: any = {
+      prompt,
+      mode,
+      result: result as any,
+    };
+    if (userId) data.userId = userId;
+
     const saved = await prisma.project.create({
-      data: {
-        prompt,
-        mode,
-        result: result as any,
-        userId: session?.user?.id ?? null,
-      },
+      data,
       select: { id: true },
     });
 
