@@ -1,3 +1,12 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
 model User {
   id            String    @id @default(cuid())
   name          String?
@@ -5,30 +14,14 @@ model User {
   emailVerified DateTime?
   image         String?
 
-  accounts      Account[]
-  sessions      Session[]
-  projects      Project[]
+  accounts Account[]
+  sessions Session[]
+  projects Project[]
 
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-}
-
-model Project {
-  id        String   @id @default(cuid())
-  prompt    String
-  mode      String
-  result    Json
   createdAt DateTime @default(now())
-
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-
-  @@index([userId])
+  updatedAt DateTime @updatedAt
 }
 
-/**
- * NextAuth models (required for Prisma Adapter)
- */
 model Account {
   id                String  @id @default(cuid())
   userId            String
@@ -63,4 +56,17 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model Project {
+  id        String   @id @default(cuid())
+  prompt    String
+  mode      String
+  result    Json
+  createdAt DateTime @default(now())
+
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([userId, createdAt])
 }

@@ -18,13 +18,21 @@ export const authOptions: NextAuthOptions = {
       ]
     : [],
 
-  session: {
-    strategy: "database",
-  },
+  session: { strategy: "database" },
 
   secret: process.env.NEXTAUTH_SECRET,
 
   pages: {
     signIn: "/login",
+  },
+
+  callbacks: {
+    async session({ session, user }) {
+      // add user.id onto session.user so you can use session.user.id everywhere
+      if (session.user) {
+        (session.user as any).id = user.id;
+      }
+      return session;
+    },
   },
 };

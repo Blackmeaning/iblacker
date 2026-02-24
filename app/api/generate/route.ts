@@ -1,31 +1,21 @@
 import { NextResponse } from "next/server";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { generateAI } from "@/lib/ai/router";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    const session = await getServerSession(authOptions);
+
     const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const mode = body?.mode?.trim() || "Design";
 
     if (!prompt) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
-    }
-
-    const session = await getServerSession(authOptions);
-
-    let userId: string | null = null;
-    const email = session?.user?.email || null;
-    if (email) {
-      const user = await prisma.user.findUnique({
-        where: { email },
-        select: { id: true },
-      });
-      userId = user?.id ?? null;
     }
 
     const result = await generateAI({ prompt, mode });
@@ -35,7 +25,7 @@ export async function POST(req: Request) {
         prompt,
         mode,
         result: result as any,
-        userId,
+        userId: session?.user?.id ?? null,
       },
       select: { id: true },
     });
