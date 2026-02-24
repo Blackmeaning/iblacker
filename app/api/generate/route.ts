@@ -2,18 +2,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { generateAI } from "@/lib/ai/router";
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const session = await auth();
-
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-
     const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const mode = body?.mode?.trim() || "Design";
@@ -24,18 +19,15 @@ export async function POST(req: Request) {
 
     const result = await generateAI({ prompt, mode });
 
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-      select: { id: true },
-    });
+    const session = await getServerSession(authOptions);
+    const userId = (session?.user as any)?.id ?? null;
 
     const saved = await prisma.project.create({
-      // Cast to any to avoid type mismatch if Vercel Prisma client is stale.
       data: {
         prompt,
         mode,
         result: result as any,
-        userId: user?.id ?? null,
+        ...(userId ? ({ userId } as any) : {}),
       } as any,
       select: { id: true },
     });

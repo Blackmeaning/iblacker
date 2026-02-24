@@ -1,35 +1,42 @@
 // /lib/auth.ts
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
+const hasGoogleCreds =
+  !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+
 /**
- * IMPORTANT:
- * Turbopack/Next build evaluates route modules during "collecting page data".
- * If NextAuth isn't initialized (providers missing), `handlers` can become undefined
- * and the build crashes when reading handlers.GET/POST.
- *
- * So: we ALWAYS initialize Google provider with safe fallbacks.
- * Real sign-in will only work when you set proper env vars in Vercel.
+ * NextAuth v4 options.
+ * NOTE: In prod, you MUST set:
+ * - AUTH_SECRET
+ * - GOOGLE_CLIENT_ID
+ * - GOOGLE_CLIENT_SECRET
  */
-
-const googleClientId = process.env.GOOGLE_CLIENT_ID ?? "DUMMY_GOOGLE_CLIENT_ID";
-const googleClientSecret =
-  process.env.GOOGLE_CLIENT_SECRET ?? "DUMMY_GOOGLE_CLIENT_SECRET";
-
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
-  providers: [
-    Google({
-      clientId: googleClientId,
-      clientSecret: googleClientSecret,
-    }),
-  ],
-  session: { strategy: "database" },
-  secret: process.env.AUTH_SECRET ?? "DUMMY_AUTH_SECRET",
-});
 
-// These exports must exist for route re-export:
-export const GET = handlers.GET;
-export const POST = handlers.POST;
+  providers: hasGoogleCreds
+    ? [
+        GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+      ]
+    : [],
+
+  secret: process.env.AUTH_SECRET,
+
+  session: { strategy: "database" },
+
+  callbacks: {
+    async session({ session, user }) {
+      // attach user.id to session for server routes
+      if (session.user) {
+        (session.user as any).id = user.id;
+      }
+      return session;
+    },
+  },
+};
