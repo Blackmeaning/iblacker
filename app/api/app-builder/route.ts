@@ -1,8 +1,7 @@
-// app/api/app-builder/route.ts
 import { NextResponse } from "next/server";
+import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
-import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 
 export const runtime = "nodejs";
 
@@ -16,9 +15,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const blueprint = await generateBlueprint(prompt, modules);
-
     const session = await auth();
+
+    const blueprint = await generateBlueprint(prompt, modules);
 
     const saved = await prisma.project.create({
       data: {
