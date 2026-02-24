@@ -1,11 +1,11 @@
-import { getServerSession } from "next-auth";
+// /app/workspace/page.tsx
+import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/lib/auth";
 
 export default async function WorkspacePage() {
-  const session = await getServerSession(authOptions);
+  const session = await auth();
 
-  if (!session) {
+  if (!session?.user?.email) {
     redirect("/login");
   }
 
@@ -16,14 +16,12 @@ export default async function WorkspacePage() {
         <p className="text-white/60">
           Signed in as{" "}
           <span className="text-white font-semibold">
-            {session.user?.email ?? "unknown"}
+            {session.user.email}
           </span>
         </p>
 
         <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-6">
-          <p className="text-white/80">
-            Workspace is protected ✅ (NextAuth + Prisma)
-          </p>
+          <p className="text-white/80">Workspace is protected ✅ (NextAuth)</p>
         </div>
       </div>
     </main>

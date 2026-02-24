@@ -1,12 +1,19 @@
+// /app/api/app-builder/route.ts
 import { NextResponse } from "next/server";
-import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 import { prisma } from "@/lib/prisma";
+import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+
+    if (!session?.user?.email) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+
     const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const modules = Array.isArray(body?.modules) ? body.modules : [];
@@ -17,26 +24,23 @@ export async function POST(req: Request) {
 
     const blueprint = await generateBlueprint(prompt, modules);
 
-    // JWT session: we have email/name/image but NOT guaranteed user.id
-    const session = await auth();
-    const userEmail = session?.user?.email ?? null;
+    const user = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true },
+    });
 
-    // Save project (keep it compatible even if userId/user table isn't ready yet)
     const saved = await prisma.project.create({
+      // Cast to any to avoid type mismatch if Vercel Prisma client is stale.
       data: {
         prompt,
         mode: "App Builder",
         result: blueprint as any,
-        // If you already added userId in schema and want it later:
-        // userId: null,
-        // For now we do NOT write userId because JWT strategy has no stable user.id.
-        // If you added userEmail column, you can store it:
-        // userEmail,
+        userId: user?.id ?? null,
       } as any,
       select: { id: true },
     });
 
-    return NextResponse.json({ ...blueprint, projectId: saved.id, userEmail });
+    return NextResponse.json({ ...blueprint, projectId: saved.id });
   } catch (e: any) {
     return NextResponse.json(
       { error: "builder_failed", message: e?.message || String(e) },

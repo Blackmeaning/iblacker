@@ -1,36 +1,27 @@
+// /lib/auth.ts
 import NextAuth from "next-auth";
-import GoogleProvider from "next-auth/providers/google";
-import type { NextAuthConfig } from "next-auth";
+import Google from "next-auth/providers/google";
+import { PrismaAdapter } from "@auth/prisma-adapter";
+import { prisma } from "@/lib/prisma";
 
-export const runtime = "nodejs";
+// Only add Google provider if env vars exist (prevents build failures on Vercel)
+const providers = [];
+if (process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET) {
+  providers.push(
+    Google({
+      clientId: process.env.GOOGLE_CLIENT_ID,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+    })
+  );
+}
 
-/**
- * IMPORTANT:
- * - This file exports: auth(), GET, POST
- * - We intentionally DO NOT use PrismaAdapter right now to avoid adapter/type/version mismatches
- *   until your auth stack is fully stable on Vercel.
- * - Session strategy = "jwt" so it works without DB adapter.
- */
-export const authConfig: NextAuthConfig = {
-  providers: [
-    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
-      ? [
-          GoogleProvider({
-            clientId: process.env.GOOGLE_CLIENT_ID,
-            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-          }),
-        ]
-      : []),
-  ],
-
-  session: { strategy: "jwt" },
-
-  // This prevents crashing builds if env vars are missing on Vercel
+export const { handlers, auth, signIn, signOut } = NextAuth({
+  adapter: PrismaAdapter(prisma),
+  providers,
+  session: { strategy: "database" },
   secret: process.env.AUTH_SECRET,
-};
+});
 
-export const { handlers, auth } = NextAuth(authConfig);
-
-// Export GET/POST so App Router route can re-export or import directly
+// Re-export GET/POST so `app/api/auth/[...nextauth]/route.ts` can re-export them.
 export const GET = handlers.GET;
 export const POST = handlers.POST;
