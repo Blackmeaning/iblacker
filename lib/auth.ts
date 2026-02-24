@@ -1,38 +1,36 @@
-import type { NextAuthOptions } from "next-auth";
+import NextAuth from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
-import { PrismaAdapter } from "@next-auth/prisma-adapter";
-import { prisma } from "@/lib/prisma";
+import type { NextAuthConfig } from "next-auth";
 
-const hasGoogle =
-  !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
+export const runtime = "nodejs";
 
-export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
+/**
+ * IMPORTANT:
+ * - This file exports: auth(), GET, POST
+ * - We intentionally DO NOT use PrismaAdapter right now to avoid adapter/type/version mismatches
+ *   until your auth stack is fully stable on Vercel.
+ * - Session strategy = "jwt" so it works without DB adapter.
+ */
+export const authConfig: NextAuthConfig = {
+  providers: [
+    ...(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
+      ? [
+          GoogleProvider({
+            clientId: process.env.GOOGLE_CLIENT_ID,
+            clientSecret: process.env.GOOGLE_CLIENT_SECRET,
+          }),
+        ]
+      : []),
+  ],
 
-  providers: hasGoogle
-    ? [
-        GoogleProvider({
-          clientId: process.env.GOOGLE_CLIENT_ID!,
-          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-        }),
-      ]
-    : [],
+  session: { strategy: "jwt" },
 
-  session: { strategy: "database" },
-
-  secret: process.env.NEXTAUTH_SECRET,
-
-  pages: {
-    signIn: "/login",
-  },
-
-  callbacks: {
-    async session({ session, user }) {
-      // add user.id onto session.user so you can use session.user.id everywhere
-      if (session.user) {
-        (session.user as any).id = user.id;
-      }
-      return session;
-    },
-  },
+  // This prevents crashing builds if env vars are missing on Vercel
+  secret: process.env.AUTH_SECRET,
 };
+
+export const { handlers, auth } = NextAuth(authConfig);
+
+// Export GET/POST so App Router route can re-export or import directly
+export const GET = handlers.GET;
+export const POST = handlers.POST;

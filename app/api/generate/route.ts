@@ -15,25 +15,23 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const session = await auth();
-    // @ts-expect-error added by types/next-auth.d.ts
-    const userId: string | null = session?.user?.id ?? null;
-
     const result = await generateAI({ prompt, mode });
 
-    const data: any = {
-      prompt,
-      mode,
-      result: result as any,
-    };
-    if (userId) data.userId = userId;
+    const session = await auth();
+    const userEmail = session?.user?.email ?? null;
 
     const saved = await prisma.project.create({
-      data,
+      data: {
+        prompt,
+        mode,
+        result: result as any,
+        // userId: null, // later when DB session strategy is enabled
+        // userEmail,     // if you add this column
+      } as any,
       select: { id: true },
     });
 
-    return NextResponse.json({ ok: true, mode, result, projectId: saved.id });
+    return NextResponse.json({ ok: true, mode, result, projectId: saved.id, userEmail });
   } catch (e: any) {
     return NextResponse.json(
       { error: "generate_failed", message: e?.message || String(e) },

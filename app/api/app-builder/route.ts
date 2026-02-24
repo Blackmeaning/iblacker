@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
 import { generateBlueprint } from "@/lib/appbuilder/blueprint";
+import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
@@ -15,28 +15,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const session = await auth();
-    // @ts-expect-error added by types/next-auth.d.ts
-    const userId: string | null = session?.user?.id ?? null;
-
     const blueprint = await generateBlueprint(prompt, modules);
 
-    // IMPORTANT: make data "any" so build won't fail if Prisma client types lag on Vercel
-    const data: any = {
-      prompt,
-      mode: "App Builder",
-      result: blueprint as any,
-    };
+    // JWT session: we have email/name/image but NOT guaranteed user.id
+    const session = await auth();
+    const userEmail = session?.user?.email ?? null;
 
-    // only attach if exists
-    if (userId) data.userId = userId;
-
+    // Save project (keep it compatible even if userId/user table isn't ready yet)
     const saved = await prisma.project.create({
-      data,
+      data: {
+        prompt,
+        mode: "App Builder",
+        result: blueprint as any,
+        // If you already added userId in schema and want it later:
+        // userId: null,
+        // For now we do NOT write userId because JWT strategy has no stable user.id.
+        // If you added userEmail column, you can store it:
+        // userEmail,
+      } as any,
       select: { id: true },
     });
 
-    return NextResponse.json({ ...blueprint, projectId: saved.id });
+    return NextResponse.json({ ...blueprint, projectId: saved.id, userEmail });
   } catch (e: any) {
     return NextResponse.json(
       { error: "builder_failed", message: e?.message || String(e) },
