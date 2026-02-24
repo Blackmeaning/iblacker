@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { generateBlueprint } from "@/lib/appbuilder/blueprint";
 import { prisma } from "@/lib/prisma";
-import { auth } from "@/lib/auth";
 
 export const runtime = "nodejs";
 
@@ -15,7 +16,17 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const session = await auth();
+    const session = await getServerSession(authOptions);
+
+    let userId: string | null = null;
+    const email = session?.user?.email || null;
+    if (email) {
+      const user = await prisma.user.findUnique({
+        where: { email },
+        select: { id: true },
+      });
+      userId = user?.id ?? null;
+    }
 
     const blueprint = await generateBlueprint(prompt, modules);
 
@@ -24,7 +35,7 @@ export async function POST(req: Request) {
         prompt,
         mode: "App Builder",
         result: blueprint as any,
-        userId: session?.user?.id ?? null,
+        userId,
       },
       select: { id: true },
     });

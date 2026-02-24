@@ -1,31 +1,30 @@
-import NextAuth from "next-auth";
-import Google from "next-auth/providers/google";
-import { PrismaAdapter } from "@auth/prisma-adapter";
+import type { NextAuthOptions } from "next-auth";
+import GoogleProvider from "next-auth/providers/google";
+import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-export const runtime = "nodejs";
+const hasGoogle =
+  !!process.env.GOOGLE_CLIENT_ID && !!process.env.GOOGLE_CLIENT_SECRET;
 
-export const { handlers, auth, signIn, signOut } = NextAuth({
+export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
 
-  providers: [
-    Google({
-      clientId: process.env.GOOGLE_CLIENT_ID!,
-      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
-    }),
-  ],
+  providers: hasGoogle
+    ? [
+        GoogleProvider({
+          clientId: process.env.GOOGLE_CLIENT_ID!,
+          clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+        }),
+      ]
+    : [],
 
-  session: { strategy: "database" },
-
-  callbacks: {
-    async session({ session, user }) {
-      // Make session.user.id available
-      if (session.user) {
-        (session.user as any).id = user.id;
-      }
-      return session;
-    },
+  session: {
+    strategy: "database",
   },
 
-  secret: process.env.AUTH_SECRET,
-});
+  secret: process.env.NEXTAUTH_SECRET,
+
+  pages: {
+    signIn: "/login",
+  },
+};

@@ -1,12 +1,12 @@
-import { auth } from "@/lib/auth";
+import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
+import { authOptions } from "@/lib/auth";
 
-export default async function Workspace() {
-  const session = await auth();
+export default async function WorkspacePage() {
+  const session = await getServerSession(authOptions);
 
-  // If not signed in, go to your login page (or NextAuth default sign-in)
   if (!session) {
-    redirect("/login"); // or: redirect("/api/auth/signin");
+    redirect("/login");
   }
 
   return (
