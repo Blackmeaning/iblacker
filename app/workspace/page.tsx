@@ -19,10 +19,6 @@ export default async function WorkspacePage() {
             {session.user.email}
           </span>
         </p>
-
-        <div className="mt-8 rounded-xl border border-white/10 bg-white/5 p-6">
-          <p className="text-white/80">Workspace is protected ✅ (NextAuth)</p>
-        </div>
       </div>
     </main>
   );
