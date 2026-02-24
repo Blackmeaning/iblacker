@@ -1,6 +1,10 @@
+// app/api/generate/route.ts
 import { NextResponse } from "next/server";
-import { prisma } from "../../../lib/prisma";
-import { generateAI } from "../../../lib/ai/router";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { generateAI } from "@/lib/ai/router";
+
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
@@ -12,16 +16,16 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "prompt required" }, { status: 400 });
     }
 
-    const result = await generateAI({
-      prompt,
-      mode,
-    });
+    const result = await generateAI({ prompt, mode });
+
+    const session = await auth();
 
     const saved = await prisma.project.create({
       data: {
         prompt,
         mode,
         result: result as any,
+        userId: session?.user?.id ?? null,
       },
       select: { id: true },
     });

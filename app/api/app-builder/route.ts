@@ -1,10 +1,14 @@
+// app/api/app-builder/route.ts
 import { NextResponse } from "next/server";
-import { generateBlueprint } from "../../../lib/appbuilder/blueprint";
-import { prisma } from "../../../lib/prisma";
+import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { generateBlueprint } from "@/lib/appbuilder/blueprint";
+
+export const runtime = "nodejs";
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
+    const body = await req.json().catch(() => null);
     const prompt = body?.prompt?.trim();
     const modules = Array.isArray(body?.modules) ? body.modules : [];
 
@@ -14,11 +18,14 @@ export async function POST(req: Request) {
 
     const blueprint = await generateBlueprint(prompt, modules);
 
+    const session = await auth();
+
     const saved = await prisma.project.create({
       data: {
         prompt,
         mode: "App Builder",
         result: blueprint as any,
+        userId: session?.user?.id ?? null,
       },
       select: { id: true },
     });
