@@ -1,74 +1,77 @@
-generator client {
-  provider = "prisma-client-js"
-}
-
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
-
 model Project {
   id        String   @id @default(cuid())
-  prompt    String
-  mode      String
-  result    Json
   createdAt DateTime @default(now())
 
-  // ✅ Multi-user ownership (keep OPTIONAL so existing rows don't break)
-  userId    String?
-  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  prompt String
+  mode   String
+  result Json
 
-  @@index([userId])
-  @@index([createdAt])
+  // ✅ owner
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // ✅ exports history
+  exports ProjectExport[]
 }
 
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String?   @unique
-  emailVerified DateTime?
-  image         String?
+model ProjectExport {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  accounts      Account[]
-  sessions      Session[]
-  projects      Project[]
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  // ✅ who created this export (optional but nice)
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  // saved artifact
+  filename String
+  mimeType String @default("application/zip")
+
+  // ⚠️ simplest “works everywhere” solution:
+  // store as Bytes in DB (fine for small zips)
+  data Bytes
+
+  size Int
 }
 
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String?
-  access_token      String?
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String?
-  session_state     String?
+model Product {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title String
+  kind  String   // "report" | "template" | "bundle" | etc
+  data  Json
 
-  @@unique([provider, providerAccountId])
-  @@index([userId])
+  userId String?
+  user   User? @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  files ProductFile[]
 }
 
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
+model ProductFile {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
 
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  @@index([userId])
+  filename String
+  mimeType String
+  data     Bytes
+  size     Int
 }
 
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
+model UserSettings {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@unique([identifier, token])
+  userId String  @unique
+  user   User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  theme   String @default("dark")
+  locale  String @default("en")
+  plan    String @default("free")
 }

@@ -1,12 +1,23 @@
-export default function Settings() {
-  return (
-    <main className="min-h-screen bg-black text-white p-10">
-      <h1 className="text-3xl font-bold mb-6">Settings</h1>
+import { prisma } from "@/lib/prisma";
+import { requireUserId } from "@/lib/currentUser";
+import SettingsClient from "./settingsClient";
 
-      <div className="bg-gray-900 p-8 rounded-lg">
-        <p className="text-gray-400">
-          Account settings, billing, and integrations will live here.
-        </p>
+export default async function SettingsPage() {
+  const userId = await requireUserId();
+
+  const settings =
+    (await prisma.userSettings.findUnique({ where: { userId } })) ??
+    (await prisma.userSettings.create({ data: { userId } }));
+
+  return (
+    <main className="min-h-screen bg-black text-white">
+      <div className="mx-auto max-w-5xl px-6 py-10">
+        <h1 className="text-3xl font-extrabold">Settings</h1>
+        <p className="mt-1 text-white/60">Your account preferences</p>
+
+        <div className="mt-8">
+          <SettingsClient initial={settings} />
+        </div>
       </div>
     </main>
   );
