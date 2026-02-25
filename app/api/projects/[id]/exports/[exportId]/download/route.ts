@@ -1,27 +1,28 @@
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
 export async function GET(
-  _req: Request,
-  ctx: { params: Promise<{ id: string; exportId: string }> }
+  _req: NextRequest,
+  context: { params: Promise<{ id: string; exportId: string }> }
 ) {
-  const userId = await requireUserId();
-  const { exportId } = await ctx.params;
+  const { exportId } = await context.params;
 
-  const exp = await prisma.projectExport.findFirst({
-    where: { id: exportId, userId },
+  const item = await prisma.projectExport.findUnique({
+    where: { id: exportId },
     select: { filename: true, mimeType: true, data: true },
   });
 
-  if (!exp) return new Response("Not found", { status: 404 });
+  if (!item) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
+  }
 
-  return new Response(exp.data, {
+  return new Response(item.data, {
     headers: {
-      "content-type": exp.mimeType ?? "application/zip",
-      "content-disposition": `attachment; filename="${exp.filename}"`,
-      "cache-control": "private, no-store",
+      "Content-Type": item.mimeType || "application/octet-stream",
+      "Content-Disposition": `attachment; filename="${item.filename}"`,
+      "Cache-Control": "private, max-age=0, must-revalidate",
     },
   });
 }

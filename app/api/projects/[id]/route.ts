@@ -1,35 +1,22 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
-export async function GET(_req: Request, ctx: { params: { id: string } }) {
-  try {
-    const userId = await requireUserId();
-    const id = ctx.params.id;
+export async function GET(
+  _req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
 
-    const project = await prisma.project.findFirst({
-      where: { id, userId },
-      select: {
-        id: true,
-        createdAt: true,
-        prompt: true,
-        mode: true,
-        result: true,
-        exports: {
-          orderBy: { createdAt: "desc" },
-          select: { id: true, createdAt: true, filename: true, size: true },
-        },
-      },
-    });
+  const project = await prisma.project.findUnique({
+    where: { id },
+    include: { exports: true },
+  });
 
-    if (!project) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
-    }
-
-    return NextResponse.json({ ok: true, project });
-  } catch {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  if (!project) {
+    return NextResponse.json({ error: "not_found" }, { status: 404 });
   }
+
+  return NextResponse.json({ ok: true, project });
 }
