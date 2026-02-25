@@ -3,9 +3,12 @@ import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
-export async function GET(_req: Request, ctx: { params: { exportId: string } }) {
+export async function GET(
+  _req: Request,
+  ctx: { params: Promise<{ id: string; exportId: string }> }
+) {
   const userId = await requireUserId();
-  const exportId = ctx.params.exportId;
+  const { exportId } = await ctx.params;
 
   const exp = await prisma.projectExport.findFirst({
     where: { id: exportId, userId },
@@ -16,9 +19,9 @@ export async function GET(_req: Request, ctx: { params: { exportId: string } }) 
 
   return new Response(exp.data, {
     headers: {
-      "content-type": exp.mimeType,
+      "content-type": exp.mimeType ?? "application/zip",
       "content-disposition": `attachment; filename="${exp.filename}"`,
-      "cache-control": "private, max-age=0, no-store",
+      "cache-control": "private, no-store",
     },
   });
 }
