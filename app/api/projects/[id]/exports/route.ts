@@ -18,9 +18,9 @@ function getString(obj: Record<string, unknown>, key: string): string | null {
   return typeof v === "string" ? v : null;
 }
 
-function toPrismaBytes(input: Uint8Array): Uint8Array {
-  // Force a fresh Uint8Array backed by a plain ArrayBuffer (Prisma Bytes strict typing)
-  const out = new Uint8Array(input.byteLength);
+function toPrismaBytes(input: Uint8Array): Uint8Array<ArrayBuffer> {
+  const ab = new ArrayBuffer(input.byteLength);
+  const out = new Uint8Array(ab);
   out.set(input);
   return out;
 }
@@ -161,7 +161,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       return NextResponse.json({ error: "bad_type" }, { status: 400 });
     }
 
-    const prismaBytes = toPrismaBytes(bytes);
+    const prismaBytes: Uint8Array<ArrayBuffer> = toPrismaBytes(bytes);
 
     const created = await prisma.projectExport.create({
       data: {
