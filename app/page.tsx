@@ -1,101 +1,104 @@
-import Image from "next/image";
+import Link from "next/link";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { redirect } from "next/navigation";
 
-export default function Home() {
+export default async function HomePage() {
+  const session = await getServerSession(authOptions);
+
+  // Logged in? Go straight to the product.
+  if (session) redirect("/dashboard");
+
+  // Not logged in: premium landing
   return (
-    <div className="grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20 font-[family-name:var(--font-geist-sans)]">
-      <main className="flex flex-col gap-8 row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="https://nextjs.org/icons/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="list-inside list-decimal text-sm text-center sm:text-left font-[family-name:var(--font-geist-mono)]">
-          <li className="mb-2">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] px-1 py-0.5 rounded font-semibold">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+    <main className="min-h-screen bg-black text-white">
+      <div className="mx-auto max-w-6xl px-6 py-16">
+        <header className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/10" />
+            <div>
+              <div className="text-lg font-semibold leading-tight">IBlacker</div>
+              <div className="text-xs text-white/60">Master AI Platform</div>
+            </div>
+          </div>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="https://nextjs.org/icons/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:min-w-44"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-6 flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="https://nextjs.org/icons/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
-    </div>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/login"
+              className="rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm hover:bg-white/10"
+            >
+              Log in
+            </Link>
+          </div>
+        </header>
+
+        <section className="mt-16 grid gap-10 lg:grid-cols-2 lg:items-center">
+          <div>
+            <h1 className="text-4xl font-semibold tracking-tight lg:text-5xl">
+              Build digital products with a single AI workspace.
+            </h1>
+            <p className="mt-5 text-white/70 leading-relaxed">
+              Generate structured outputs for plans, code, content, and assets — then export to JSON, PDF, and DOCX.
+              Built for speed, quality, and scalability.
+            </p>
+
+            <div className="mt-8 flex flex-wrap gap-3">
+              <Link
+                href="/login"
+                className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-black hover:bg-white/90"
+              >
+                Start building
+              </Link>
+              <Link
+                href="/login"
+                className="rounded-xl border border-white/15 bg-white/5 px-5 py-3 text-sm hover:bg-white/10"
+              >
+                View dashboard
+              </Link>
+            </div>
+
+            <div className="mt-10 grid grid-cols-2 gap-3 text-sm text-white/70">
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="font-semibold text-white">Text</div>
+                <div className="mt-1 text-white/60">Blueprints, plans, docs</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="font-semibold text-white">Code</div>
+                <div className="mt-1 text-white/60">APIs, apps, websites</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="font-semibold text-white">Image</div>
+                <div className="mt-1 text-white/60">Design & visual assets</div>
+              </div>
+              <div className="rounded-2xl border border-white/10 bg-white/5 p-4">
+                <div className="font-semibold text-white">Exports</div>
+                <div className="mt-1 text-white/60">JSON • PDF • DOCX</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="rounded-3xl border border-white/10 bg-gradient-to-b from-white/10 to-white/5 p-6 shadow-2xl">
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-5">
+              <div className="text-xs text-white/50">Preview</div>
+              <div className="mt-3 space-y-3">
+                <div className="h-3 w-3/4 rounded bg-white/10" />
+                <div className="h-3 w-full rounded bg-white/10" />
+                <div className="h-3 w-5/6 rounded bg-white/10" />
+                <div className="h-24 w-full rounded-xl bg-white/5 border border-white/10" />
+              </div>
+              <div className="mt-5 flex gap-2">
+                <div className="rounded-lg bg-white px-3 py-2 text-xs font-semibold text-black">Generate</div>
+                <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/70">Save</div>
+                <div className="rounded-lg border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/70">Export</div>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <footer className="mt-20 border-t border-white/10 pt-8 text-xs text-white/50">
+          © {new Date().getFullYear()} IBlacker. All rights reserved.
+        </footer>
+      </div>
+    </main>
   );
 }
