@@ -30,41 +30,42 @@ enum ExportType {
 }
 
 model User {
-  id               String    @id @default(cuid())
-  name             String?
-  email            String?   @unique
-  emailVerified    DateTime?
-  image            String?
-  role             Role      @default(USER)
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  role          Role      @default(USER)
 
-  stripeCustomerId String?   @unique
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  stripeCustomerId String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
-  accounts         Account[]
-  sessions         Session[]
-  projects         Project[]
-  exports          Export[]
-  subscription     Subscription?
-  usage            Usage[]
-  generationLogs   GenerationLog[]
+  accounts       Account[]
+  sessions       Session[]
+  projects       Project[]
+  exports        Export[]
+  subscription   Subscription?
+  usage          Usage[]
+  generationLogs GenerationLog[]
+  projectExports ProjectExport[]
 }
 
 model Account {
-  id                 String  @id @default(cuid())
-  userId             String
-  type               String
-  provider           String
-  providerAccountId  String
-  refresh_token      String?
-  access_token       String?
-  expires_at         Int?
-  token_type         String?
-  scope              String?
-  id_token           String?
-  session_state      String?
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
 
-  user               User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
 }
@@ -75,7 +76,7 @@ model Session {
   userId       String
   expires      DateTime
 
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model VerificationToken {
@@ -87,30 +88,31 @@ model VerificationToken {
 }
 
 model Project {
-  id         String      @id @default(cuid())
-  userId     String
-  mode       ProjectMode
-  category   String      @default("GENERAL")
-  title      String?
-  prompt     String
-  input      Json?
-  result     Json?
-  provider   String?
-  model      String?
-  tokensIn   Int?        @default(0)
-  tokensOut  Int?        @default(0)
-  costUsd    Float?      @default(0)
-  status     String      @default("PREVIEW")
+  id        String      @id @default(cuid())
+  userId    String
+  mode      ProjectMode
+  category  String      @default("GENERAL")
+  title     String?
+  prompt    String
+  input     Json?
+  result    Json?
+  provider  String?
+  model     String?
+  tokensIn  Int?        @default(0)
+  tokensOut Int?        @default(0)
+  costUsd   Float?      @default(0)
+  status    String      @default("PREVIEW")
 
-  createdAt  DateTime    @default(now())
-  updatedAt  DateTime    @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  exports    Export[]
+  user           User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  exports        Export[]
+  projectExports ProjectExport[]
 }
 
 model Export {
-  id        String     @id @default(cuid())
+  id        String @id @default(cuid())
   userId    String
   projectId String
 
@@ -121,49 +123,49 @@ model Export {
   blobUrl   String?
   content   Json?
 
-  createdAt DateTime   @default(now())
+  createdAt DateTime @default(now())
 
-  user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project   Project    @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([projectId, createdAt])
 }
 
 model Subscription {
-  id                   String   @id @default(cuid())
-  userId               String   @unique
+  id     String @id @default(cuid())
+  userId String @unique
 
-  stripeSubscriptionId String?  @unique
+  stripeSubscriptionId String?   @unique
   stripePriceId        String?
-  status               String   @default("inactive")
+  status               String    @default("inactive")
   currentPeriodEnd     DateTime?
 
-  createdAt            DateTime @default(now())
-  updatedAt            DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Usage {
-  id          String   @id @default(cuid())
-  userId      String
-  period      String
+  id     String @id @default(cuid())
+  userId String
+  period String
 
-  generations Int      @default(0)
-  tokensIn    Int      @default(0)
-  tokensOut   Int      @default(0)
+  generations Int @default(0)
+  tokensIn    Int @default(0)
+  tokensOut   Int @default(0)
 
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, period])
 }
 
 model GenerationLog {
-  id        String      @id @default(cuid())
+  id        String  @id @default(cuid())
   userId    String
   projectId String?
 
@@ -177,22 +179,22 @@ model GenerationLog {
   ok        Boolean     @default(false)
   error     String?
 
-  createdAt DateTime    @default(now())
+  createdAt DateTime @default(now())
 
-  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
 }
 
 model ProjectExport {
-  id        String   @id @default(cuid())
+  id        String @id @default(cuid())
   userId    String
   projectId String
 
-  filename  String
-  mimeType  String
-  data      Bytes
-  size      Int
+  filename String
+  mimeType String
+  data     Bytes
+  size     Int
 
   createdAt DateTime @default(now())
 
