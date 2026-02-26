@@ -3,8 +3,6 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId, UnauthorizedError } from "@/lib/currentUser";
 import { PDFDocument, StandardFonts } from "pdf-lib";
 import { Document, Packer, Paragraph, TextRun } from "docx";
-import fs from "node:fs";
-import path from "node:path";
 
 export const runtime = "nodejs";
 
@@ -169,7 +167,7 @@ async function buildPdfBytes(
   const pdfDoc = await PDFDocument.create();
 
   const page = pdfDoc.addPage();
-  const { width, height } = page.getSize();
+  const { height } = page.getSize();
 
   const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
