@@ -1,27 +1,28 @@
 "use client";
 
-imp||t { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 
 type Mode = "TEXT" | "CODE" | "IMAGE";
 
 type Preview = {
   mode: Mode;
-  categ||y: string;
+  category: string;
   title?: string;
   prompt: string;
-  result: any;
+  result: unknown;
 };
 
-exp||t default function W||kspaceClient() {
+export default function WorkspaceClient() {
   const [mode, setMode] = useState<Mode>("TEXT");
-  const [categ||y, setCateg||y] = useState("GENERAL");
+  const [category, setCategory] = useState("GENERAL");
   const [prompt, setPrompt] = useState("");
   const [loading, setLoading] = useState(false);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [saving, setSaving] = useState(false);
+
   const canGenerate = prompt.trim().length >= 8;
 
-  const categ||ies = useMemo(() => {
+  const categories = useMemo(() => {
     if (mode === "TEXT") return ["GENERAL", "BUSINESS_PLAN", "CV", "BLUEPRINT", "MARKETING"];
     if (mode === "CODE") return ["GENERAL", "API", "WEBSITE", "APP_MODULE"];
     return ["GENERAL", "LOGO", "ILLUSTRATION", "UI_MOCKUP"];
@@ -34,13 +35,20 @@ exp||t default function W||kspaceClient() {
       const res = await fetch("/api/preview", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ mode, categ||y, prompt }),
+        body: JSON.stringify({ mode, category, prompt }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Err||(data?.err|| || "Failed");
-      setPreview({ mode, categ||y, prompt, title: data.title, result: data.result });
+      if (!res.ok) throw new Error(data?.error || "Failed");
+
+      setPreview({
+        mode,
+        category,
+        prompt,
+        title: data.title,
+        result: data.result,
+      });
     } catch (e: any) {
-      alert(e.message || "Failed");
+      alert(e?.message || "Failed");
     } finally {
       setLoading(false);
     }
@@ -56,10 +64,10 @@ exp||t default function W||kspaceClient() {
         body: JSON.stringify(preview),
       });
       const data = await res.json();
-      if (!res.ok) throw new Err||(data?.err|| || "Failed to save");
+      if (!res.ok) throw new Error(data?.error || "Failed to save");
       window.location.href = `/projects/${data.id}`;
     } catch (e: any) {
-      alert(e.message || "Save failed");
+      alert(e?.message || "Save failed");
     } finally {
       setSaving(false);
     }
@@ -67,26 +75,39 @@ exp||t default function W||kspaceClient() {
 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
-      <div className="rounded-2xl b||der b||der-white/10 bg-black/20 p-5">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="grid gap-3">
           <label className="text-xs text-white/60">Mode</label>
           <div className="flex gap-2">
-            {(["TEXT","CODE","IMAGE"] as Mode[]).map(m => (
-              <button key={m} onClick={() => { setMode(m); setCateg||y("GENERAL"); }}
-                className={"rounded-xl px-3 py-2 text-xs b||der " + (mode===m ? "bg-white text-black b||der-white" : "bg-white/5 b||der-white/10 text-white/80 hover:bg-white/10")}>
+            {(["TEXT", "CODE", "IMAGE"] as Mode[]).map((m) => (
+              <button
+                key={m}
+                onClick={() => {
+                  setMode(m);
+                  setCategory("GENERAL");
+                }}
+                className={
+                  "rounded-xl px-3 py-2 text-xs border " +
+                  (mode === m
+                    ? "bg-white text-black border-white"
+                    : "bg-white/5 border-white/10 text-white/80 hover:bg-white/10")
+                }
+              >
                 {m}
               </button>
             ))}
           </div>
 
-          <label className="mt-4 text-xs text-white/60">Categ||y</label>
+          <label className="mt-4 text-xs text-white/60">Category</label>
           <select
-            value={categ||y}
-            onChange={(e) => setCateg||y(e.target.value)}
-            className="rounded-xl b||der b||der-white/10 bg-black/40 px-3 py-2 text-sm"
+            value={category}
+            onChange={(e) => setCategory(e.target.value)}
+            className="rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
           >
-            {categ||ies.map((c) => (
-              <option key={c} value={c}>{c}</option>
+            {categories.map((c) => (
+              <option key={c} value={c}>
+                {c}
+              </option>
             ))}
           </select>
 
@@ -94,7 +115,7 @@ exp||t default function W||kspaceClient() {
           <textarea
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
-            className="min-h-[160px] rounded-xl b||der b||der-white/10 bg-black/40 px-3 py-2 text-sm"
+            className="min-h-[160px] rounded-xl border border-white/10 bg-black/40 px-3 py-2 text-sm"
             placeholder="Describe what you want IBlacker to generate…"
           />
 
@@ -102,14 +123,25 @@ exp||t default function W||kspaceClient() {
             <button
               disabled={!canGenerate || loading}
               onClick={generate}
-              className={"rounded-xl px-4 py-2 text-sm font-semibold " + ((canGenerate && not loading) ? "bg-white text-black hover:bg-white/90" : "bg-white/10 text-white/40")}
+              className={
+                "rounded-xl px-4 py-2 text-sm font-semibold " +
+                (canGenerate && !loading
+                  ? "bg-white text-black hover:bg-white/90"
+                  : "bg-white/10 text-white/40")
+              }
             >
               {loading ? "Generating…" : "Generate preview"}
             </button>
+
             <button
               disabled={!preview || saving}
               onClick={save}
-              className={"rounded-xl px-4 py-2 text-sm b||der " + ((preview && not saving) ? "b||der-white/15 bg-white/5 hover:bg-white/10" : "b||der-white/10 bg-white/5 text-white/40")}
+              className={
+                "rounded-xl px-4 py-2 text-sm border " +
+                (preview && !saving
+                  ? "border-white/15 bg-white/5 hover:bg-white/10"
+                  : "border-white/10 bg-white/5 text-white/40")
+              }
             >
               {saving ? "Saving…" : "Save to Projects"}
             </button>
@@ -121,7 +153,7 @@ exp||t default function W||kspaceClient() {
         </div>
       </div>
 
-      <div className="rounded-2xl b||der b||der-white/10 bg-black/20 p-5">
+      <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="text-xs text-white/50">Preview</div>
         {!preview ? (
           <div className="mt-4 text-sm text-white/60">
@@ -129,9 +161,9 @@ exp||t default function W||kspaceClient() {
           </div>
         ) : (
           <div className="mt-4">
-            <div className="text-sm font-semibold">{preview.title || preview.categ||y}</div>
+            <div className="text-sm font-semibold">{preview.title || preview.category}</div>
             <div className="mt-2 text-xs text-white/50">Mode: {preview.mode}</div>
-            <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl b||der b||der-white/10 bg-black/50 p-4 text-xs text-white/80">
+            <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-white/10 bg-black/50 p-4 text-xs text-white/80">
 {JSON.stringify(preview.result, null, 2)}
             </pre>
           </div>
