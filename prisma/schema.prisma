@@ -183,3 +183,22 @@ model GenerationLog {
 
   @@index([userId, createdAt])
 }
+
+model ProjectExport {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+
+  filename  String
+  mimeType  String
+  data      Bytes
+  size      Int
+
+  createdAt DateTime @default(now())
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([projectId, createdAt])
+}
