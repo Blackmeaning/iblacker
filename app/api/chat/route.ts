@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
-import { requireUserId, UnauthorizedError } from "@/lib/currentUser";
+import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
@@ -22,23 +22,29 @@ function isChatRole(v: unknown): v is ChatRole {
 function parseMessages(input: unknown): ChatMessage[] | null {
   if (!Array.isArray(input)) return null;
 
-  const out: ChatMessage[] = [];
+  const result: ChatMessage[] = [];
+
   for (const item of input) {
     if (!isRecord(item)) return null;
+
     const role = item["role"];
     const content = item["content"];
+
     if (!isChatRole(role)) return null;
     if (typeof content !== "string") return null;
+
     const trimmed = content.trim();
     if (trimmed.length === 0) return null;
-    out.push({ role, content: trimmed });
+
+    result.push({ role, content: trimmed });
   }
-  return out;
+
+  return result;
 }
 
 export async function POST(req: Request) {
   try {
-    await requireUserId(); // protect chat
+    await requireUserId(); // protect endpoint
 
     const body: unknown = await req.json().catch(() => null);
     if (!isRecord(body)) {
@@ -50,25 +56,32 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "messages_required" }, { status: 400 });
     }
 
-    const system: ChatMessage = {
-      role: "system",
-      content:
-        "You are IBlacker AI. Be concise, helpful, and practical. If user asks for investing advice, include a short risk disclaimer and focus on education.",
-    };
-
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      messages: [system, ...messages],
+      messages: [
+        {
+          role: "system",
+          content:
+            "You are IBlacker AI. Be concise, practical, and intelligent. If discussing investing, focus on education and include a short risk disclaimer.",
+        },
+        ...messages,
+      ],
       temperature: 0.3,
     });
 
-    const text = completion.choices[0]?.message?.content ?? "";
-    return NextResponse.json({ ok: true, message: text });
-  } catch (e) {
-    if (e instanceof UnauthorizedError) {
-      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
-    }
-    const msg = e instanceof Error ? e.message : "chat_failed";
-    return NextResponse.json({ error: "chat_failed", detail: msg }, { status: 500 });
+    const reply = completion.choices[0]?.message?.content ?? "";
+
+    return NextResponse.json({
+      ok: true,
+      message: reply,
+    });
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "chat_failed";
+
+    return NextResponse.json(
+      { error: "chat_failed", detail: message },
+      { status: 500 }
+    );
   }
 }
