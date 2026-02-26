@@ -1,7 +1,7 @@
 import { prisma } from "@/lib/prisma";
 import { requireSession } from "@/lib/requireSession";
 import { notFound } from "next/navigation";
-import ExportButtons from "./export-buttons";
+import { ExportButtons } from "./export-buttons";
 
 export default async function ProjectPage({ params }: { params: { id: string } }) {
   const session = await requireSession();
