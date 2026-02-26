@@ -3,6 +3,8 @@ import { prisma } from "@/lib/prisma";
 import { requireUserId, UnauthorizedError } from "@/lib/currentUser";
 import PDFDocument from "pdfkit";
 import { Document, Packer, Paragraph, TextRun } from "docx";
+import fs from "node:fs";
+import path from "node:path";
 
 export const runtime = "nodejs";
 
@@ -160,7 +162,6 @@ async function extractImage(result: unknown, imageIndex: number): Promise<{ mime
 }
 
 async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
-  // Vercel-safe: resolve only on "end"
   return new Promise<Uint8Array>((resolve, reject) => {
     try {
       const doc = new PDFDocument({ size: "A4", margin: 50, autoFirstPage: true });
@@ -169,6 +170,13 @@ async function buildPdfBytes(title: string, prompt: string, resultText: string):
       doc.on("data", (chunk: Buffer) => buffers.push(chunk));
       doc.on("end", () => resolve(new Uint8Array(Buffer.concat(buffers))));
       doc.on("error", reject);
+
+      // IMPORTANT: use a bundled TTF so PDFKit doesn't try to load Helvetica.afm
+      const fontPath = path.join(process.cwd(), "assets", "fonts", "DejaVuSans.ttf");
+      const fontBytes = fs.readFileSync(fontPath);
+
+      doc.registerFont("DejaVuSans", fontBytes);
+      doc.font("DejaVuSans");
 
       doc.fontSize(20).text(title || "Project", { align: "left" });
       doc.moveDown();
