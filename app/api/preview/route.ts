@@ -108,7 +108,7 @@ export async function POST(req: Request) {
         category,
         provider: "openai",
         model,
-        ok: true,  # will be replaced below
+        ok: true
       },
     });
   } catch {}
