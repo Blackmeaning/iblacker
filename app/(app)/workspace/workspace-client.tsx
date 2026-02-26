@@ -1,12 +1,4 @@
-cd /workspaces/iblacker
-
-python3 - <<'PY'
-from pathlib import Path
-
-p = Path("app/(app)/workspace/workspace-client.tsx")
-p.parent.mkdir(parents=True, exist_ok=True)
-
-p.write_text(r'''"use client";
+"use client";
 
 import Image from "next/image";
 import { useMemo, useState } from "react";
@@ -237,7 +229,3 @@ export default function WorkspaceClient() {
     </div>
   );
 }
-''', encoding="utf-8")
-
-print("✅ workspace-client.tsx fixed (no any + next/image + alt)")
-PY
