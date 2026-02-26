@@ -1,5 +1,6 @@
 "use client";
 
+import Image from "next/image";
 import { useMemo, useState } from "react";
 
 type Mode = "TEXT" | "CODE" | "IMAGE";
@@ -11,6 +12,22 @@ type Preview = {
   prompt: string;
   result: unknown;
 };
+
+type ImagePreviewResult = {
+  image: { b64: string; mime?: string };
+};
+
+function hasImageB64(result: unknown): result is ImagePreviewResult {
+  if (typeof result !== "object" || result === null) return false;
+  if (!("image" in result)) return false;
+
+  const img = (result as { image?: unknown }).image;
+  if (typeof img !== "object" || img === null) return false;
+  if (!("b64" in img)) return false;
+
+  const b64 = (img as { b64?: unknown }).b64;
+  return typeof b64 === "string" && b64.length > 0;
+}
 
 export default function WorkspaceClient() {
   const [mode, setMode] = useState<Mode>("TEXT");
@@ -37,16 +54,27 @@ export default function WorkspaceClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ mode, category, prompt }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed");
+      const data: unknown = await res.json();
 
-      setPreview({
-        mode,
-        category,
-        prompt,
-        title: data.title,
-        result: data.result,
-      });
+      if (!res.ok) {
+        const msg =
+          typeof data === "object" && data !== null && "error" in data
+            ? String((data as { error?: unknown }).error ?? "Failed")
+            : "Failed";
+        throw new Error(msg);
+      }
+
+      const title =
+        typeof data === "object" && data !== null && "title" in data
+          ? String((data as { title?: unknown }).title ?? "")
+          : "";
+
+      const result =
+        typeof data === "object" && data !== null && "result" in data
+          ? (data as { result?: unknown }).result
+          : null;
+
+      setPreview({ mode, category, prompt, title, result });
     } catch (e) {
       alert(e instanceof Error ? e.message : "Failed");
     } finally {
@@ -63,9 +91,23 @@ export default function WorkspaceClient() {
         headers: { "content-type": "application/json" },
         body: JSON.stringify(preview),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error || "Failed to save");
-      window.location.href = `/projects/${data.id}`;
+      const data: unknown = await res.json();
+
+      if (!res.ok) {
+        const msg =
+          typeof data === "object" && data !== null && "error" in data
+            ? String((data as { error?: unknown }).error ?? "Failed to save")
+            : "Failed to save";
+        throw new Error(msg);
+      }
+
+      const id =
+        typeof data === "object" && data !== null && "id" in data
+          ? String((data as { id?: unknown }).id ?? "")
+          : "";
+
+      if (!id) throw new Error("Missing project id from server");
+      window.location.href = `/projects/${id}`;
     } catch (e) {
       alert(e instanceof Error ? e.message : "Save failed");
     } finally {
@@ -155,6 +197,7 @@ export default function WorkspaceClient() {
 
       <div className="rounded-2xl border border-white/10 bg-black/20 p-5">
         <div className="text-xs text-white/50">Preview</div>
+
         {!preview ? (
           <div className="mt-4 text-sm text-white/60">
             Generate a preview to see the structured output here.
@@ -164,11 +207,15 @@ export default function WorkspaceClient() {
             <div className="text-sm font-semibold">{preview.title || preview.category}</div>
             <div className="mt-2 text-xs text-white/50">Mode: {preview.mode}</div>
 
-            {preview.mode === "IMAGE" && (preview.result as any)?.image?.b64 ? (
-              <div className="mt-4">
-                <img
-                  src={`data:image/png;base64,${(preview.result as any).image.b64}`}
-                  className="rounded-xl border border-white/10"
+            {preview.mode === "IMAGE" && hasImageB64(preview.result) ? (
+              <div className="mt-4 overflow-hidden rounded-xl border border-white/10">
+                <Image
+                  src={`data:image/png;base64,${preview.result.image.b64}`}
+                  alt="Generated preview"
+                  width={1024}
+                  height={1024}
+                  className="h-auto w-full"
+                  priority
                 />
               </div>
             ) : (
