@@ -48,7 +48,11 @@ function dataUrlToBytes(dataUrl: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
-async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
+async function buildPdfBytes(
+  title: string,
+  prompt: string,
+  resultText: string
+): Promise<Uint8Array> {
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   const chunks: Buffer[] = [];
 
@@ -71,7 +75,11 @@ async function buildPdfBytes(title: string, prompt: string, resultText: string):
   return done;
 }
 
-async function buildDocxBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
+async function buildDocxBytes(
+  title: string,
+  prompt: string,
+  resultText: string
+): Promise<Uint8Array> {
   const doc = new Document({
     sections: [
       {
