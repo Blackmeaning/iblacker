@@ -65,17 +65,17 @@ export default function ChatPage() {
   }
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4 p-6">
-      <h1 className="text-xl font-semibold">Chat</h1>
+    <div className="mx-auto flex w-full max-w-5xl flex-col gap-4 p-6">
+      <h1 className="text-xl font-semibold text-white">Chat</h1>
 
-      <div className="flex min-h-[60vh] flex-col gap-3 rounded-lg border p-4">
+      <div className="flex min-h-[60vh] flex-col gap-3 rounded-lg border border-white/10 bg-black/20 p-4">
         {messages.map((m, idx) => (
           <div key={idx} className={m.role === "user" ? "ml-auto max-w-[85%]" : "mr-auto max-w-[85%]"}>
             <div
               className={
                 m.role === "user"
-                  ? "rounded-2xl bg-black px-4 py-2 text-white"
-                  : "rounded-2xl border bg-white px-4 py-2"
+                  ? "rounded-2xl bg-white/10 px-4 py-2 text-white"
+                  : "rounded-2xl border border-white/10 bg-white px-4 py-2 text-black"
               }
             >
               <div className="whitespace-pre-wrap text-sm leading-6">{m.content}</div>
@@ -86,7 +86,7 @@ export default function ChatPage() {
 
       <div className="flex gap-2">
         <textarea
-          className="min-h-[44px] flex-1 resize-none rounded-md border p-3 text-sm"
+          className="min-h-[44px] flex-1 resize-none rounded-md border border-white/10 bg-white px-3 py-3 text-sm text-black placeholder:text-black/50"
           placeholder="Type a message…"
           value={input}
           onChange={(e) => setInput(e.target.value)}
@@ -99,7 +99,7 @@ export default function ChatPage() {
           disabled={sending}
         />
         <button
-          className="rounded-md border px-4 text-sm disabled:opacity-50"
+          className="rounded-md border border-white/10 bg-white px-4 text-sm font-medium text-black disabled:opacity-50"
           onClick={() => void send()}
           disabled={sending || input.trim().length === 0}
         >
