@@ -2,53 +2,75 @@
 
 import { useState } from "react";
 
-type ExportType = "JSON" | "PDF" | "DOCX";
+type ExportType = "JSON" | "PDF" | "DOCX" | "IMAGE_FILE";
 
-export default function ExportButtons({ projectId }: { projectId: string }) {
+export function ExportButtons({ projectId }: { projectId: string }) {
   const [loading, setLoading] = useState<ExportType | null>(null);
 
-  async function run(type: ExportType) {
-    setLoading(type);
+  async function doExport(type: ExportType) {
     try {
+      setLoading(type);
+
       const res = await fetch(`/api/projects/${projectId}/exports`, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ type }),
       });
 
-      const data: unknown = await res.json();
-      if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as
+        | { ok: true; exportId: string }
+        | { error: string }
+        | null;
+
+      if (!res.ok || !data || !("ok" in data) || data.ok !== true) {
         const msg =
-          typeof data === "object" && data !== null && "error" in data
-            ? String((data as { error?: unknown }).error ?? "export_failed")
+          data && "error" in data && typeof data.error === "string"
+            ? data.error
             : "export_failed";
-        throw new Error(msg);
+        alert(msg);
+        return;
       }
 
-      const url =
-        typeof data === "object" && data !== null && "downloadUrl" in data
-          ? String((data as { downloadUrl?: unknown }).downloadUrl ?? "")
-          : "";
-
-      if (!url) throw new Error("missing_download_url");
-      window.location.href = url;
-    } catch (e) {
-      alert(e instanceof Error ? e.message : "Export failed");
+      window.location.href = `/api/projects/${projectId}/exports/${data.exportId}/download`;
     } finally {
       setLoading(null);
     }
   }
 
-  const btn = (type: ExportType) => (
-    <button
-      key={type}
-      onClick={() => run(type)}
-      disabled={loading !== null}
-      className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm hover:bg-white/10 disabled:opacity-50"
-    >
-      {loading === type ? `Exporting ${type}…` : `Export ${type}`}
-    </button>
-  );
+  return (
+    <div className="flex flex-wrap gap-2">
+      <button
+        className="rounded-md border px-3 py-2 text-sm"
+        onClick={() => void doExport("JSON")}
+        disabled={loading !== null}
+      >
+        {loading === "JSON" ? "Exporting JSON..." : "Export JSON"}
+      </button>
 
-  return <div className="mt-3 flex flex-wrap gap-2">{(["JSON", "PDF", "DOCX"] as ExportType[]).map(btn)}</div>;
+      <button
+        className="rounded-md border px-3 py-2 text-sm"
+        onClick={() => void doExport("PDF")}
+        disabled={loading !== null}
+      >
+        {loading === "PDF" ? "Exporting PDF..." : "Export PDF"}
+      </button>
+
+      <button
+        className="rounded-md border px-3 py-2 text-sm"
+        onClick={() => void doExport("DOCX")}
+        disabled={loading !== null}
+      >
+        {loading === "DOCX" ? "Exporting DOCX..." : "Export DOCX"}
+      </button>
+
+      <button
+        className="rounded-md border px-3 py-2 text-sm"
+        onClick={() => void doExport("IMAGE_FILE")}
+        disabled={loading !== null}
+        title="Exports a PNG if this project contains an image result"
+      >
+        {loading === "IMAGE_FILE" ? "Exporting Image..." : "Export Image"}
+      </button>
+    </div>
+  );
 }

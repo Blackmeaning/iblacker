@@ -6,22 +6,35 @@ import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export const runtime = "nodejs";
 
-type ExportRequestBody = {
-  type?: "JSON" | "PDF" | "DOCX" | "IMAGE_FILE";
-  filename?: string;
-};
+type ExportType = "JSON" | "PDF" | "DOCX" | "IMAGE_FILE";
+type ExportRequestBody = { type?: ExportType; filename?: string };
 
-function toSafeString(value: unknown): string {
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function getString(obj: Record<string, unknown>, key: string): string | null {
+  const v = obj[key];
+  return typeof v === "string" ? v : null;
+}
+
+function toPrismaBytes(input: Uint8Array): Uint8Array {
+  // Force a fresh Uint8Array backed by a plain ArrayBuffer (Prisma Bytes strict typing)
+  const out = new Uint8Array(input.byteLength);
+  out.set(input);
+  return out;
+}
+
+function toText(value: unknown): string {
   if (typeof value === "string") return value;
   return JSON.stringify(value, null, 2);
 }
 
 function tryExtractImageDataUrl(value: unknown): string | null {
   if (typeof value !== "string") return null;
-  // data:image/png;base64,....
+
   if (value.startsWith("data:image/") && value.includes(";base64,")) return value;
 
-  // Sometimes stored as raw base64 (no prefix) - we treat as png base64.
   const maybeB64 = value.trim();
   if (/^[A-Za-z0-9+/=]+$/.test(maybeB64) && maybeB64.length > 200) {
     return `data:image/png;base64,${maybeB64}`;
@@ -32,76 +45,46 @@ function tryExtractImageDataUrl(value: unknown): string | null {
 function dataUrlToBytes(dataUrl: string): Uint8Array {
   const idx = dataUrl.indexOf(";base64,");
   const b64 = idx >= 0 ? dataUrl.slice(idx + 8) : "";
-  const buf = Buffer.from(b64, "base64");
-  return new Uint8Array(buf);
+  return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
-async function buildPdfBytes(opts: {
-  title: string;
-  prompt: string;
-  resultText: string;
-  imageDataUrl?: string | null;
-}): Promise<Uint8Array> {
+async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
   const doc = new PDFDocument({ size: "A4", margin: 50 });
   const chunks: Buffer[] = [];
 
   doc.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+
   const done = new Promise<Uint8Array>((resolve, reject) => {
     doc.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
     doc.on("error", reject);
   });
 
-  doc.fontSize(18).text(opts.title, { underline: true });
+  doc.fontSize(18).text(title, { underline: true });
   doc.moveDown();
-  doc.fontSize(12).text("Prompt:", { continued: false });
-  doc.fontSize(11).text(opts.prompt || "(none)");
+  doc.fontSize(12).text("Prompt:");
+  doc.fontSize(11).text(prompt || "(none)");
   doc.moveDown();
-  doc.fontSize(12).text("Result:", { continued: false });
-  doc.fontSize(11).text(opts.resultText || "(empty)");
-
-  if (opts.imageDataUrl) {
-    try {
-      const imgBytes = Buffer.from(
-        opts.imageDataUrl.split(";base64,")[1] ?? "",
-        "base64"
-      );
-      doc.addPage();
-      doc.fontSize(14).text("Image Output:");
-      doc.moveDown();
-      doc.image(imgBytes, { fit: [500, 700], align: "center" });
-    } catch {
-      // ignore image embedding errors; still return the PDF
-    }
-  }
-
+  doc.fontSize(12).text("Result:");
+  doc.fontSize(11).text(resultText || "(empty)");
   doc.end();
+
   return done;
 }
 
-async function buildDocxBytes(opts: {
-  title: string;
-  prompt: string;
-  resultText: string;
-}): Promise<Uint8Array> {
+async function buildDocxBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
   const doc = new Document({
     sections: [
       {
         children: [
           new Paragraph({
-            children: [new TextRun({ text: opts.title, bold: true, size: 32 })],
+            children: [new TextRun({ text: title, bold: true, size: 32 })],
           }),
           new Paragraph({ text: "" }),
-          new Paragraph({
-            children: [new TextRun({ text: "Prompt:", bold: true })],
-          }),
-          new Paragraph({ text: opts.prompt || "(none)" }),
+          new Paragraph({ children: [new TextRun({ text: "Prompt:", bold: true })] }),
+          new Paragraph({ text: prompt || "(none)" }),
           new Paragraph({ text: "" }),
-          new Paragraph({
-            children: [new TextRun({ text: "Result:", bold: true })],
-          }),
-          ...opts.resultText
-            .split("\n")
-            .map((line) => new Paragraph({ text: line })),
+          new Paragraph({ children: [new TextRun({ text: "Result:", bold: true })] }),
+          ...resultText.split("\n").map((line) => new Paragraph({ text: line })),
         ],
       },
     ],
@@ -118,35 +101,29 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
     const project = await prisma.project.findFirst({
       where: { id: projectId, userId },
-      select: {
-        id: true,
-        title: true,
-        prompt: true,
-        mode: true,
-        result: true,
-        createdAt: true,
-      },
+      select: { id: true, title: true, prompt: true, result: true, createdAt: true },
     });
 
-    if (!project) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
-    }
+    if (!project) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
-    const body = (await req.json().catch(() => null)) as ExportRequestBody | null;
-    const type = body?.type ?? "JSON";
+    const rawBody: unknown = await req.json().catch(() => ({}));
+    const body: ExportRequestBody = isRecord(rawBody)
+      ? {
+          type: (getString(rawBody, "type") as ExportType | null) ?? undefined,
+          filename: getString(rawBody, "filename") ?? undefined,
+        }
+      : {};
 
-    const safeTitle = project.title?.trim() || `Project ${project.id}`;
+    const type: ExportType = body.type ?? "JSON";
     const baseName = `project-${project.id}`;
+    const title = project.title?.trim() || `Project ${project.id}`;
 
-    let filename = body?.filename?.trim() || "";
+    const resultText = toText(project.result);
+    const imageDataUrl = tryExtractImageDataUrl(project.result);
+
+    let filename = body.filename?.trim() || "";
     let mimeType = "application/octet-stream";
     let bytes: Uint8Array;
-
-    const resultText = toSafeString(project.result);
-    const imageCandidate =
-      typeof project.result === "string"
-        ? tryExtractImageDataUrl(project.result)
-        : null;
 
     if (type === "JSON") {
       filename = filename || `${baseName}.json`;
@@ -158,7 +135,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
               id: project.id,
               title: project.title,
               prompt: project.prompt,
-              mode: project.mode,
               createdAt: project.createdAt,
               result: project.result,
             },
@@ -171,35 +147,21 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     } else if (type === "PDF") {
       filename = filename || `${baseName}.pdf`;
       mimeType = "application/pdf";
-      bytes = await buildPdfBytes({
-        title: safeTitle,
-        prompt: project.prompt,
-        resultText,
-        imageDataUrl: imageCandidate,
-      });
+      bytes = await buildPdfBytes(title, project.prompt, resultText);
     } else if (type === "DOCX") {
       filename = filename || `${baseName}.docx`;
-      mimeType =
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-      bytes = await buildDocxBytes({
-        title: safeTitle,
-        prompt: project.prompt,
-        resultText,
-      });
+      mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+      bytes = await buildDocxBytes(title, project.prompt, resultText);
     } else if (type === "IMAGE_FILE") {
-      const dataUrl = imageCandidate;
-      if (!dataUrl) {
-        return NextResponse.json(
-          { error: "no_image_available" },
-          { status: 400 }
-        );
-      }
+      if (!imageDataUrl) return NextResponse.json({ error: "no_image_available" }, { status: 400 });
       filename = filename || `${baseName}.png`;
       mimeType = "image/png";
-      bytes = dataUrlToBytes(dataUrl);
+      bytes = dataUrlToBytes(imageDataUrl);
     } else {
       return NextResponse.json({ error: "bad_type" }, { status: 400 });
     }
+
+    const prismaBytes = toPrismaBytes(bytes);
 
     const created = await prisma.projectExport.create({
       data: {
@@ -207,8 +169,8 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
         projectId,
         filename,
         mimeType,
-        data: bytes,
-        size: bytes.byteLength,
+        data: prismaBytes,
+        size: prismaBytes.byteLength,
       },
       select: { id: true },
     });
@@ -229,20 +191,12 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
       select: { id: true },
     });
 
-    if (!project) {
-      return NextResponse.json({ error: "not_found" }, { status: 404 });
-    }
+    if (!project) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
     const exportsList = await prisma.projectExport.findMany({
       where: { projectId, userId },
       orderBy: { createdAt: "desc" },
-      select: {
-        id: true,
-        filename: true,
-        mimeType: true,
-        size: true,
-        createdAt: true,
-      },
+      select: { id: true, filename: true, mimeType: true, size: true, createdAt: true },
     });
 
     return NextResponse.json({ ok: true, exports: exportsList });
