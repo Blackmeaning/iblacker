@@ -13,9 +13,7 @@ async function getJson(url: string): Promise<unknown> {
   } catch {
     json = { raw: text };
   }
-  if (!res.ok) {
-    throw new Error(`http_${res.status}_${JSON.stringify(json)}`);
-  }
+  if (!res.ok) throw new Error(`http_${res.status}_${text}`);
   return json;
 }
 
@@ -31,17 +29,6 @@ export async function getStockPrice(symbol: string) {
   };
 
   return data.results?.[0] ?? null;
-}
-
-// ---------- STOCK FUNDAMENTALS (FMP) ----------
-export async function getStockProfile(symbol: string) {
-  const key = mustEnv("FMP_API_KEY");
-  const url = `https://financialmodelingprep.com/api/v3/profile/${encodeURIComponent(
-    symbol
-  )}?apikey=${encodeURIComponent(key)}`;
-
-  const data = (await getJson(url)) as Array<Record<string, unknown>>;
-  return data?.[0] ?? null;
 }
 
 // ---------- CRYPTO PRICE (CoinGecko, no key) ----------

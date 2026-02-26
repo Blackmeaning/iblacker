@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getStockPrice, getStockProfile, getCryptoPrice } from "@/lib/market/providers";
+import { getStockPrice, getCryptoPrice } from "@/lib/market/providers";
 
 export const runtime = "nodejs";
 
@@ -14,13 +14,8 @@ export async function GET(req: Request) {
 
   try {
     if (type === "stock") {
-      const [price, profile] = await Promise.all([
-        getStockPrice(symbol),
-        // if FMP fails, we still want price
-        getStockProfile(symbol).catch(() => null),
-      ]);
-
-      return NextResponse.json({ ok: true, price, profile });
+      const price = await getStockPrice(symbol);
+      return NextResponse.json({ ok: true, price });
     }
 
     if (type === "crypto") {
