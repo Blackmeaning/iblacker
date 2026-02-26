@@ -13,32 +13,26 @@ export function ExportButtons({ projectId }: { projectId: string }) {
 
       const res = await fetch(`/api/projects/${projectId}/exports`, {
         method: "POST",
-        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ type }),
       });
 
       const data = (await res.json().catch(() => null)) as
         | { ok: true; exportId: string }
-        | { error: string }
+        | { error: string; detail?: string }
         | null;
-
-      if (res.status === 401) {
-        alert("unauthorized");
-        window.location.href = "/login";
-        return;
-      }
 
       if (!res.ok || !data || !("ok" in data) || data.ok !== true) {
         const msg =
           data && "error" in data && typeof data.error === "string"
-            ? data.error
-            : `export_failed_${res.status}`;
+            ? `${data.error}${data.detail ? `: ${data.detail}` : ""}`
+            : "export_failed";
         alert(msg);
         return;
       }
 
-      window.location.href = `/api/projects/${projectId}/exports/${data.exportId}/download`;
+      const url = `/api/projects/${projectId}/exports/${data.exportId}/download`;
+      window.open(url, "_blank", "noopener,noreferrer");
     } finally {
       setLoading(null);
     }
@@ -46,27 +40,15 @@ export function ExportButtons({ projectId }: { projectId: string }) {
 
   return (
     <div className="flex flex-wrap gap-2">
-      <button
-        className="rounded-md border px-3 py-2 text-sm"
-        onClick={() => void doExport("JSON")}
-        disabled={loading !== null}
-      >
+      <button className="rounded-md border px-3 py-2 text-sm" onClick={() => void doExport("JSON")} disabled={loading !== null}>
         {loading === "JSON" ? "Exporting JSON..." : "Export JSON"}
       </button>
 
-      <button
-        className="rounded-md border px-3 py-2 text-sm"
-        onClick={() => void doExport("PDF")}
-        disabled={loading !== null}
-      >
+      <button className="rounded-md border px-3 py-2 text-sm" onClick={() => void doExport("PDF")} disabled={loading !== null}>
         {loading === "PDF" ? "Exporting PDF..." : "Export PDF"}
       </button>
 
-      <button
-        className="rounded-md border px-3 py-2 text-sm"
-        onClick={() => void doExport("DOCX")}
-        disabled={loading !== null}
-      >
+      <button className="rounded-md border px-3 py-2 text-sm" onClick={() => void doExport("DOCX")} disabled={loading !== null}>
         {loading === "DOCX" ? "Exporting DOCX..." : "Export DOCX"}
       </button>
 

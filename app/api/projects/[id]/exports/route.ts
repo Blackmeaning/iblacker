@@ -1,19 +1,13 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { requireUserId } from "@/lib/currentUser";
+import { requireUserId, UnauthorizedError } from "@/lib/currentUser";
 import PDFDocument from "pdfkit";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 
 export const runtime = "nodejs";
 
 type ExportType = "JSON" | "PDF" | "DOCX" | "IMAGE_FILE";
-
-type ExportRequestBody = {
-  type?: ExportType;
-  filename?: string;
-  // optional: choose image if multiple exist in the result
-  imageIndex?: number;
-};
+type ExportRequestBody = { type?: ExportType; filename?: string; imageIndex?: number };
 
 function isRecord(v: unknown): v is Record<string, unknown> {
   return typeof v === "object" && v !== null;
@@ -29,7 +23,6 @@ function getNumber(obj: Record<string, unknown>, key: string): number | null {
   return typeof v === "number" && Number.isFinite(v) ? v : null;
 }
 
-// Prisma Bytes sometimes expects Uint8Array<ArrayBuffer> in strict builds on Vercel
 function toPrismaBytes(input: Uint8Array): Uint8Array<ArrayBuffer> {
   const ab = new ArrayBuffer(input.byteLength);
   const out = new Uint8Array(ab);
@@ -49,7 +42,6 @@ function toText(value: unknown): string {
 function looksLikeBase64(s: string): boolean {
   const t = s.trim();
   if (t.length < 200) return false;
-  // base64 chars + optional padding
   return /^[A-Za-z0-9+/=]+$/.test(t);
 }
 
@@ -70,7 +62,6 @@ function base64ToBytes(b64: string): Uint8Array {
   return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
-// Walk arbitrary JSON and collect possible image candidates
 type ImageCandidate =
   | { kind: "dataUrl"; dataUrl: string }
   | { kind: "base64"; b64: string; mime?: string }
@@ -84,7 +75,6 @@ function collectImageCandidates(value: unknown, out: ImageCandidate[]): void {
       return;
     }
     if (isHttpUrl(s)) {
-      // could be an image URL
       out.push({ kind: "url", url: s });
       return;
     }
@@ -101,7 +91,6 @@ function collectImageCandidates(value: unknown, out: ImageCandidate[]): void {
   }
 
   if (isRecord(value)) {
-    // OpenAI-style: { b64_json: "..." } or { data: [{ b64_json: "..." }] }
     const b64 = getString(value, "b64_json");
     if (b64 && looksLikeBase64(b64)) out.push({ kind: "base64", b64 });
 
@@ -110,7 +99,6 @@ function collectImageCandidates(value: unknown, out: ImageCandidate[]): void {
 
     const mime = getString(value, "mime");
 
-    // common nesting keys
     const commonKeys = [
       "image",
       "imageBase64",
@@ -129,27 +117,20 @@ function collectImageCandidates(value: unknown, out: ImageCandidate[]): void {
     ];
 
     for (const k of commonKeys) {
-      if (k in value) {
-        const v = value[k];
-        if (typeof v === "string") {
-          const s = v.trim();
-          const parsed = parseDataUrlImage(s);
-          if (parsed) out.push({ kind: "dataUrl", dataUrl: s });
-          else if (looksLikeBase64(s)) out.push({ kind: "base64", b64: s, mime: mime ?? undefined });
-          else if (isHttpUrl(s)) out.push({ kind: "url", url: s });
-        } else {
-          collectImageCandidates(v, out);
-        }
-      }
+      if (k in value) collectImageCandidates(value[k], out);
     }
 
-    // also walk all fields (last resort)
+    // also walk all fields
     for (const v of Object.values(value)) collectImageCandidates(v, out);
+
+    // if we saw base64 but no mime, keep it as png by default
+    if (mime && looksLikeBase64(mime)) {
+      out.push({ kind: "base64", b64: mime });
+    }
   }
 }
 
 async function fetchImageUrl(url: string): Promise<{ mime: string; bytes: Uint8Array } | null> {
-  // Basic safety: only fetch http(s), small-ish responses
   const res = await fetch(url, { cache: "no-store" });
   if (!res.ok) return null;
 
@@ -158,69 +139,36 @@ async function fetchImageUrl(url: string): Promise<{ mime: string; bytes: Uint8A
 
   const ab = await res.arrayBuffer();
   const bytes = new Uint8Array(ab);
-
-  // sanity size limits (10MB)
   if (bytes.byteLength > 10 * 1024 * 1024) return null;
 
   return { mime: contentType, bytes };
 }
 
-async function extractImage(
-  result: unknown,
-  imageIndex: number
-): Promise<{ mime: string; bytes: Uint8Array } | null> {
+async function extractImage(result: unknown, imageIndex: number): Promise<{ mime: string; bytes: Uint8Array } | null> {
   const candidates: ImageCandidate[] = [];
   collectImageCandidates(result, candidates);
-
   if (candidates.length === 0) return null;
 
   const idx = Math.max(0, Math.min(imageIndex, candidates.length - 1));
   const picked = candidates[idx];
 
-  if (picked.kind === "dataUrl") {
-    return parseDataUrlImage(picked.dataUrl);
-  }
-
-  if (picked.kind === "base64") {
-    // best-guess mime
-    const mime = picked.mime ?? "image/png";
-    return { mime, bytes: base64ToBytes(picked.b64) };
-  }
-
-  if (picked.kind === "url") {
-    return await fetchImageUrl(picked.url);
-  }
+  if (picked.kind === "dataUrl") return parseDataUrlImage(picked.dataUrl);
+  if (picked.kind === "base64") return { mime: picked.mime ?? "image/png", bytes: base64ToBytes(picked.b64) };
+  if (picked.kind === "url") return await fetchImageUrl(picked.url);
 
   return null;
 }
 
-async function buildPdfBytes(
-  title: string,
-  prompt: string,
-  resultText: string
-): Promise<Uint8Array> {
+async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
+  // Vercel-safe: resolve only on "end"
   return new Promise<Uint8Array>((resolve, reject) => {
     try {
-      const doc = new PDFDocument({
-        size: "A4",
-        margin: 50,
-        autoFirstPage: true,
-      });
-
+      const doc = new PDFDocument({ size: "A4", margin: 50, autoFirstPage: true });
       const buffers: Buffer[] = [];
 
-      doc.on("data", (chunk: Buffer) => {
-        buffers.push(chunk);
-      });
-
-      doc.on("end", () => {
-        const pdfBuffer = Buffer.concat(buffers);
-        resolve(new Uint8Array(pdfBuffer));
-      });
-
-      doc.on("error", (err) => {
-        reject(err);
-      });
+      doc.on("data", (chunk: Buffer) => buffers.push(chunk));
+      doc.on("end", () => resolve(new Uint8Array(Buffer.concat(buffers))));
+      doc.on("error", reject);
 
       doc.fontSize(20).text(title || "Project", { align: "left" });
       doc.moveDown();
@@ -230,9 +178,7 @@ async function buildPdfBytes(
       doc.moveDown();
 
       doc.fontSize(14).text("Result:");
-      doc.fontSize(11).text(resultText || "(empty)", {
-        width: 500,
-      });
+      doc.fontSize(11).text(resultText || "(empty)");
 
       doc.end();
     } catch (err) {
@@ -246,9 +192,7 @@ async function buildDocxBytes(title: string, prompt: string, resultText: string)
     sections: [
       {
         children: [
-          new Paragraph({
-            children: [new TextRun({ text: title || "Project", bold: true, size: 32 })],
-          }),
+          new Paragraph({ children: [new TextRun({ text: title || "Project", bold: true, size: 32 })] }),
           new Paragraph({ text: "" }),
           new Paragraph({ children: [new TextRun({ text: "Prompt:", bold: true })] }),
           new Paragraph({ text: prompt || "(none)" }),
@@ -264,9 +208,23 @@ async function buildDocxBytes(title: string, prompt: string, resultText: string)
   return new Uint8Array(buf);
 }
 
+function errorToMessage(e: unknown): string {
+  if (e instanceof Error) return e.message;
+  return "unknown_error";
+}
+
 export async function POST(req: Request, ctx: { params: { id: string } }) {
+  let userId: string;
   try {
-    const userId = await requireUserId();
+    userId = await requireUserId();
+  } catch (e) {
+    if (e instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "auth_failed" }, { status: 500 });
+  }
+
+  try {
     const projectId = ctx.params.id;
 
     const project = await prisma.project.findFirst({
@@ -290,7 +248,6 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const title = project.title?.trim() || `Project ${project.id}`;
     const prompt = project.prompt ?? "";
     const resultText = toText(project.result);
-
     const imageIndex = typeof body.imageIndex === "number" ? body.imageIndex : 0;
 
     let filename = body.filename?.trim() || "";
@@ -303,13 +260,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       bytes = new Uint8Array(
         Buffer.from(
           JSON.stringify(
-            {
-              id: project.id,
-              title: project.title,
-              prompt: project.prompt,
-              createdAt: project.createdAt,
-              result: project.result,
-            },
+            { id: project.id, title: project.title, prompt: project.prompt, createdAt: project.createdAt, result: project.result },
             null,
             2
           ),
@@ -328,16 +279,11 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       const image = await extractImage(project.result, imageIndex);
       if (!image) {
         return NextResponse.json(
-          {
-            error: "no_image_available",
-            hint:
-              "Result does not contain an image (data URL, base64, b64_json, or image URL). Try generating an image first.",
-          },
+          { error: "no_image_available", hint: "This project result does not contain an image (data URL, base64, b64_json, or image URL)." },
           { status: 400 }
         );
       }
 
-      // extension best-guess
       const ext =
         image.mime.includes("png") ? "png" : image.mime.includes("jpeg") ? "jpg" : image.mime.includes("webp") ? "webp" : "img";
 
@@ -351,33 +297,35 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     const prismaBytes = toPrismaBytes(bytes);
 
     const created = await prisma.projectExport.create({
-      data: {
-        userId,
-        projectId,
-        filename,
-        mimeType,
-        data: prismaBytes,
-        size: prismaBytes.byteLength,
-      },
+      data: { userId, projectId, filename, mimeType, data: prismaBytes, size: prismaBytes.byteLength },
       select: { id: true },
     });
 
     return NextResponse.json({ ok: true, exportId: created.id });
-  } catch {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  } catch (e) {
+    // IMPORTANT: do not lie and say "unauthorized" when PDFKit fails
+    return NextResponse.json(
+      { error: "export_failed", detail: errorToMessage(e) },
+      { status: 500 }
+    );
   }
 }
 
 export async function GET(_req: Request, ctx: { params: { id: string } }) {
+  let userId: string;
   try {
-    const userId = await requireUserId();
+    userId = await requireUserId();
+  } catch (e) {
+    if (e instanceof UnauthorizedError) {
+      return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+    }
+    return NextResponse.json({ error: "auth_failed" }, { status: 500 });
+  }
+
+  try {
     const projectId = ctx.params.id;
 
-    const project = await prisma.project.findFirst({
-      where: { id: projectId, userId },
-      select: { id: true },
-    });
-
+    const project = await prisma.project.findFirst({ where: { id: projectId, userId }, select: { id: true } });
     if (!project) return NextResponse.json({ error: "not_found" }, { status: 404 });
 
     const exportsList = await prisma.projectExport.findMany({
@@ -387,7 +335,7 @@ export async function GET(_req: Request, ctx: { params: { id: string } }) {
     });
 
     return NextResponse.json({ ok: true, exports: exportsList });
-  } catch {
-    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  } catch (e) {
+    return NextResponse.json({ error: "exports_list_failed", detail: errorToMessage(e) }, { status: 500 });
   }
 }
