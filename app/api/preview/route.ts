@@ -44,22 +44,18 @@ export async function POST(req: Request) {
     const title = `${category} (IMAGE)`;
     const result = {
       title,
-      image: {
-        mime: "image/png",
-        b64,
-      },
+      image: { mime: "image/png", b64 },
       metadata: { mode, category, model },
     };
 
-    // Preview-only: no DB write here. Save happens in /api/projects (already implemented).
     return NextResponse.json({ title, result });
   }
 
   // --- TEXT/CODE ---
   const model =
     mode === "CODE"
-      ? env("OPENAI_MODEL_CODE", "gpt-5.2")
-      : env("OPENAI_MODEL_TEXT", "gpt-5.2");
+      ? env("OPENAI_MODEL_CODE", "gpt-4o-mini")
+      : env("OPENAI_MODEL_TEXT", "gpt-4o-mini");
 
   const system = [
     "You are IBlacker, a professional product generator.",
@@ -74,26 +70,21 @@ export async function POST(req: Request) {
     "}",
   ].join("\n");
 
-  const input = [
-    { role: "system", content: system },
-    {
-      role: "user",
-      content: `Mode: ${mode}\nCategory: ${category}\n\nPROMPT:\n${prompt}`,
-    },
-  ];
-
-  const resp = await openai.responses.create({
+  const completion = await openai.chat.completions.create({
     model,
-    input,
+    temperature: 0.2,
+    messages: [
+      { role: "system", content: system },
+      { role: "user", content: `Mode: ${mode}\nCategory: ${category}\n\nPROMPT:\n${prompt}` },
+    ],
   });
 
-  const outputText = resp.output_text ?? "";
-  let parsedJson: unknown = null;
+  const outputText = completion.choices?.[0]?.message?.content ?? "";
 
+  let parsedJson: unknown = null;
   try {
     parsedJson = JSON.parse(outputText);
   } catch {
-    // Fallback: if model didn't obey, still return something usable
     parsedJson = {
       title: `${category} (${mode})`,
       summary: "Model returned non-JSON output. Showing raw text in sections.",
@@ -103,29 +94,24 @@ export async function POST(req: Request) {
     };
   }
 
-  // Optional lightweight usage log (won't break if fields missing)
+  const safeTitle =
+    typeof parsedJson === "object" && parsedJson !== null && "title" in parsedJson
+      ? String((parsedJson as { title: unknown }).title ?? `${category} (${mode})`)
+      : `${category} (${mode})`;
+
+  // Optional lightweight generation log (safe if env missing; ignored if DB insert fails)
   try {
-    await prisma.usageLog.create({
+    await prisma.generationLog.create({
       data: {
         userId: session.user.id,
         mode,
         category,
         provider: "openai",
         model,
-        ok: true,
-        tokensIn: 0,
-        tokensOut: 0,
-        costUsd: 0,
+        ok: true,  # will be replaced below
       },
     });
-  } catch {
-    // ignore logging errors for now
-  }
-
-  const safeTitle =
-    typeof parsedJson === "object" && parsedJson !== null && "title" in parsedJson
-      ? String((parsedJson as { title: unknown }).title ?? `${category} (${mode})`)
-      : `${category} (${mode})`;
+  } catch {}
 
   return NextResponse.json({ title: safeTitle, result: parsedJson });
 }
