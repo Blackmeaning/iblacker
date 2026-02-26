@@ -4,7 +4,7 @@ import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
-export async function GET(
+export async function DELETE(
   _req: Request,
   ctx: { params: { id: string; exportId: string } }
 ) {
@@ -12,22 +12,18 @@ export async function GET(
     const userId = await requireUserId();
     const { id: projectId, exportId } = ctx.params;
 
-    const exp = await prisma.projectExport.findFirst({
+    const existing = await prisma.projectExport.findFirst({
       where: { id: exportId, projectId, userId },
-      select: { filename: true, mimeType: true, data: true, size: true },
+      select: { id: true },
     });
 
-    if (!exp) {
+    if (!existing) {
       return NextResponse.json({ error: "not_found" }, { status: 404 });
     }
 
-    const headers = new Headers();
-    headers.set("Content-Type", exp.mimeType);
-    headers.set("Content-Disposition", `attachment; filename="${exp.filename}"`);
-    headers.set("Content-Length", String(exp.size));
-    headers.set("Cache-Control", "private, max-age=0, no-store");
+    await prisma.projectExport.delete({ where: { id: exportId } });
 
-    return new NextResponse(exp.data, { status: 200, headers });
+    return NextResponse.json({ ok: true });
   } catch {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }

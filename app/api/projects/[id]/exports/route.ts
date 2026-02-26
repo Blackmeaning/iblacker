@@ -65,3 +65,38 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     return NextResponse.json({ error: "unauthorized" }, { status: 401 });
   }
 }
+
+export async function GET(
+  _req: Request,
+  ctx: { params: { id: string } }
+) {
+  try {
+    const userId = await requireUserId();
+    const projectId = ctx.params.id;
+
+    const project = await prisma.project.findFirst({
+      where: { id: projectId, userId },
+      select: { id: true },
+    });
+
+    if (!project) {
+      return NextResponse.json({ error: "not_found" }, { status: 404 });
+    }
+
+    const exportsList = await prisma.projectExport.findMany({
+      where: { projectId, userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        filename: true,
+        mimeType: true,
+        size: true,
+        createdAt: true,
+      },
+    });
+
+    return NextResponse.json({ ok: true, exports: exportsList });
+  } catch {
+    return NextResponse.json({ error: "unauthorized" }, { status: 401 });
+  }
+}
