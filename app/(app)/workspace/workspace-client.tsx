@@ -47,8 +47,8 @@ export default function WorkspaceClient() {
         title: data.title,
         result: data.result,
       });
-    } catch (e: any) {
-      alert(e?.message || "Failed");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Failed");
     } finally {
       setLoading(false);
     }
@@ -66,8 +66,8 @@ export default function WorkspaceClient() {
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || "Failed to save");
       window.location.href = `/projects/${data.id}`;
-    } catch (e: any) {
-      alert(e?.message || "Save failed");
+    } catch (e) {
+      alert(e instanceof Error ? e.message : "Save failed");
     } finally {
       setSaving(false);
     }
