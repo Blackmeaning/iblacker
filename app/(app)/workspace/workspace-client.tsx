@@ -163,9 +163,19 @@ export default function WorkspaceClient() {
           <div className="mt-4">
             <div className="text-sm font-semibold">{preview.title || preview.category}</div>
             <div className="mt-2 text-xs text-white/50">Mode: {preview.mode}</div>
-            <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-white/10 bg-black/50 p-4 text-xs text-white/80">
+
+            {preview.mode === "IMAGE" && (preview.result as any)?.image?.b64 ? (
+              <div className="mt-4">
+                <img
+                  src={`data:image/png;base64,${(preview.result as any).image.b64}`}
+                  className="rounded-xl border border-white/10"
+                />
+              </div>
+            ) : (
+              <pre className="mt-4 max-h-[420px] overflow-auto rounded-xl border border-white/10 bg-black/50 p-4 text-xs text-white/80">
 {JSON.stringify(preview.result, null, 2)}
-            </pre>
+              </pre>
+            )}
           </div>
         )}
       </div>
