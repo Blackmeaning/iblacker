@@ -194,29 +194,51 @@ async function extractImage(
   return null;
 }
 
-async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
-  const doc = new PDFDocument({ size: "A4", margin: 50 });
-  const chunks: Buffer[] = [];
+async function buildPdfBytes(
+  title: string,
+  prompt: string,
+  resultText: string
+): Promise<Uint8Array> {
+  return new Promise<Uint8Array>((resolve, reject) => {
+    try {
+      const doc = new PDFDocument({
+        size: "A4",
+        margin: 50,
+        autoFirstPage: true,
+      });
 
-  doc.on("data", (c) => chunks.push(Buffer.isBuffer(c) ? c : Buffer.from(c)));
+      const buffers: Buffer[] = [];
 
-  const done = new Promise<Uint8Array>((resolve, reject) => {
-    doc.on("end", () => resolve(new Uint8Array(Buffer.concat(chunks))));
-    doc.on("error", reject);
+      doc.on("data", (chunk: Buffer) => {
+        buffers.push(chunk);
+      });
+
+      doc.on("end", () => {
+        const pdfBuffer = Buffer.concat(buffers);
+        resolve(new Uint8Array(pdfBuffer));
+      });
+
+      doc.on("error", (err) => {
+        reject(err);
+      });
+
+      doc.fontSize(20).text(title || "Project", { align: "left" });
+      doc.moveDown();
+
+      doc.fontSize(14).text("Prompt:");
+      doc.fontSize(11).text(prompt || "(none)");
+      doc.moveDown();
+
+      doc.fontSize(14).text("Result:");
+      doc.fontSize(11).text(resultText || "(empty)", {
+        width: 500,
+      });
+
+      doc.end();
+    } catch (err) {
+      reject(err);
+    }
   });
-
-  doc.fontSize(18).text(title || "Project", { underline: true });
-  doc.moveDown();
-
-  doc.fontSize(12).text("Prompt:");
-  doc.fontSize(10).text(prompt || "(none)");
-  doc.moveDown();
-
-  doc.fontSize(12).text("Result:");
-  doc.fontSize(10).text(resultText || "(empty)");
-
-  doc.end();
-  return done;
 }
 
 async function buildDocxBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
