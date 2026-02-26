@@ -25,14 +25,12 @@ export async function exportPDF(params: {
     pdf.fillColor("black").moveDown();
   }
 
-  // If IMAGE mode has base64, embed it
   const b64 = tryGetImageB64(result);
   if (mode === "IMAGE" && b64) {
     const imgBuf = Buffer.from(b64, "base64");
     pdf.moveDown();
     pdf.fontSize(12).text("Generated Image:");
     pdf.moveDown(0.5);
-    // Fit image nicely on page
     pdf.image(imgBuf, { fit: [500, 500], align: "center" });
     pdf.addPage();
   }

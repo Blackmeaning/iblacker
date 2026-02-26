@@ -1,4 +1,4 @@
-import { Document, Packer, Paragraph, TextRun, HeadingLevel } from "docx";
+import { Document, HeadingLevel, Packer, Paragraph, TextRun } from "docx";
 import { normalizeResult } from "./normalize";
 
 export async function exportDOCX(params: {
@@ -9,9 +9,7 @@ export async function exportDOCX(params: {
   const { mode, category, result } = params;
   const doc = normalizeResult(mode, category, result);
 
-  const paragraphs: Paragraph[] = [
-    new Paragraph({ text: doc.title, heading: HeadingLevel.TITLE }),
-  ];
+  const paragraphs: Paragraph[] = [new Paragraph({ text: doc.title, heading: HeadingLevel.TITLE })];
 
   if (doc.summary) {
     paragraphs.push(

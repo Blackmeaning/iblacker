@@ -15,7 +15,6 @@ function asString(v: unknown, fallback = ""): string {
 }
 
 export function normalizeResult(mode: string, category: string, result: unknown): NormalizedDoc {
-  // IMAGE: show a simple doc wrapper (image bytes handled in PDF exporter)
   if (mode === "IMAGE") {
     return {
       title: `${category} (IMAGE)`,

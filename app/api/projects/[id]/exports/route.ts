@@ -19,7 +19,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
 
   const project = await prisma.project.findFirst({
     where: { id: projectId, userId },
-    select: { id: true, mode: true, category: true, result: true, title: true },
+    select: { id: true, mode: true, category: true, result: true, title: true, prompt: true, createdAt: true },
   });
 
   if (!project) return NextResponse.json({ error: "not_found" }, { status: 404 });
@@ -38,7 +38,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   let data: Buffer;
 
   if (type === "JSON") {
-    const out = exportJSON({ ...project });
+    const out = exportJSON(project);
     filename = `${baseName}.json`;
     mimeType = out.mime;
     data = out.data;

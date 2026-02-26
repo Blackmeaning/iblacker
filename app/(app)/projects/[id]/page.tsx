@@ -23,16 +23,6 @@ export default async function ProjectPage({ params }: { params: { id: string } }
             {project.mode} • {project.category}
           </div>
         </div>
-
-        <form
-          className="flex gap-2"
-          action={async (formData) => {
-            "use server";
-            // Server Actions not used here; buttons are client-side via fetch below (kept simple)
-          }}
-        >
-          {/* buttons rendered by small client script below */}
-        </form>
       </div>
 
       <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-5">
@@ -54,4 +44,3 @@ export default async function ProjectPage({ params }: { params: { id: string } }
     </main>
   );
 }
-
