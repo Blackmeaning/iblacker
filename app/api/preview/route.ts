@@ -88,7 +88,7 @@ export async function POST(req: Request) {
   });
 
   const outputText = resp.output_text ?? "";
-  let parsedJson: any = null;
+  let parsedJson: unknown = null;
 
   try {
     parsedJson = JSON.parse(outputText);
@@ -122,5 +122,10 @@ export async function POST(req: Request) {
     // ignore logging errors for now
   }
 
-  return NextResponse.json({ title: parsedJson.title ?? `${category} (${mode})`, result: parsedJson });
+  const safeTitle =
+    typeof parsedJson === "object" && parsedJson !== null && "title" in parsedJson
+      ? String((parsedJson as { title: unknown }).title ?? `${category} (${mode})`)
+      : `${category} (${mode})`;
+
+  return NextResponse.json({ title: safeTitle, result: parsedJson });
 }
