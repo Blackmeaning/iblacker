@@ -13,6 +13,7 @@ export function ExportButtons({ projectId }: { projectId: string }) {
 
       const res = await fetch(`/api/projects/${projectId}/exports`, {
         method: "POST",
+        credentials: "include",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ type }),
       });
@@ -22,11 +23,17 @@ export function ExportButtons({ projectId }: { projectId: string }) {
         | { error: string }
         | null;
 
+      if (res.status === 401) {
+        alert("unauthorized");
+        window.location.href = "/login";
+        return;
+      }
+
       if (!res.ok || !data || !("ok" in data) || data.ok !== true) {
         const msg =
           data && "error" in data && typeof data.error === "string"
             ? data.error
-            : "export_failed";
+            : `export_failed_${res.status}`;
         alert(msg);
         return;
       }
