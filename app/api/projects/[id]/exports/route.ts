@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { requireUserId, UnauthorizedError } from "@/lib/currentUser";
-import PDFDocument from "pdfkit";
+import { PDFDocument, StandardFonts } from "pdf-lib";
 import { Document, Packer, Paragraph, TextRun } from "docx";
 import fs from "node:fs";
 import path from "node:path";
@@ -161,38 +161,47 @@ async function extractImage(result: unknown, imageIndex: number): Promise<{ mime
   return null;
 }
 
-async function buildPdfBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
-  return new Promise<Uint8Array>((resolve, reject) => {
-    try {
-      const doc = new PDFDocument({ size: "A4", margin: 50, autoFirstPage: true });
-      const buffers: Buffer[] = [];
+async function buildPdfBytes(
+  title: string,
+  prompt: string,
+  resultText: string
+): Promise<Uint8Array> {
+  const pdfDoc = await PDFDocument.create();
 
-      doc.on("data", (chunk: Buffer) => buffers.push(chunk));
-      doc.on("end", () => resolve(new Uint8Array(Buffer.concat(buffers))));
-      doc.on("error", reject);
+  const page = pdfDoc.addPage();
+  const { width, height } = page.getSize();
 
-      // IMPORTANT: use a bundled TTF so PDFKit doesn't try to load Helvetica.afm
-      const fontPath = path.join(process.cwd(), "assets", "fonts", "DejaVuSans.ttf");
-      const fontBytes = fs.readFileSync(fontPath);
+  const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
 
-      doc.registerFont("DejaVuSans", fontBytes);
-      doc.font("DejaVuSans");
+  let y = height - 50;
 
-      doc.fontSize(20).text(title || "Project", { align: "left" });
-      doc.moveDown();
-
-      doc.fontSize(14).text("Prompt:");
-      doc.fontSize(11).text(prompt || "(none)");
-      doc.moveDown();
-
-      doc.fontSize(14).text("Result:");
-      doc.fontSize(11).text(resultText || "(empty)");
-
-      doc.end();
-    } catch (err) {
-      reject(err);
+  const drawTextBlock = (text: string, size: number) => {
+    const lines = text.split("\n");
+    for (const line of lines) {
+      page.drawText(line, {
+        x: 50,
+        y,
+        size,
+        font,
+      });
+      y -= size + 6;
+      if (y < 50) {
+        y = height - 50;
+        pdfDoc.addPage();
+      }
     }
-  });
+  };
+
+  drawTextBlock(title || "Project", 20);
+  y -= 10;
+  drawTextBlock("Prompt:", 14);
+  drawTextBlock(prompt || "(none)", 11);
+  y -= 10;
+  drawTextBlock("Result:", 14);
+  drawTextBlock(resultText || "(empty)", 11);
+
+  const pdfBytes = await pdfDoc.save();
+  return new Uint8Array(pdfBytes);
 }
 
 async function buildDocxBytes(title: string, prompt: string, resultText: string): Promise<Uint8Array> {
