@@ -12,6 +12,11 @@ const BodySchema = z.object({
   type: z.enum(["JSON", "PDF", "DOCX"]),
 });
 
+function toUint8Array(input: Uint8Array): Uint8Array {
+  // Buffer is a Uint8Array, but this guarantees a clean Uint8Array instance for Prisma Bytes typing
+  return input instanceof Uint8Array ? new Uint8Array(input) : new Uint8Array(input);
+}
+
 export async function POST(req: Request, ctx: { params: { id: string } }) {
   const session = await requireSession();
   const userId = session.user.id;
@@ -35,13 +40,13 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
   const baseName = (project.title || `${project.category}-${project.mode}`).replace(/[^a-z0-9-_]+/gi, "_");
   let filename = "";
   let mimeType = "";
-  let data: Buffer;
+  let data: Uint8Array;
 
   if (type === "JSON") {
     const out = exportJSON(project);
     filename = `${baseName}.json`;
     mimeType = out.mime;
-    data = out.data;
+    data = out.data; // Buffer is OK here because Buffer extends Uint8Array
   } else if (type === "PDF") {
     const out = await exportPDF({ mode: project.mode, category: project.category, result: project.result });
     filename = `${baseName}.pdf`;
@@ -54,7 +59,9 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
     data = out.data;
   }
 
-  const size = data.byteLength;
+  const bytes = toUint8Array(data);
+  const size = bytes.byteLength;
+
   if (size > 8 * 1024 * 1024) {
     return NextResponse.json({ error: "too_large", limitMB: 8 }, { status: 413 });
   }
@@ -65,7 +72,7 @@ export async function POST(req: Request, ctx: { params: { id: string } }) {
       userId,
       filename,
       mimeType,
-      data,
+      data: bytes, // Prisma Bytes expects Uint8Array
       size,
     },
     select: { id: true },
