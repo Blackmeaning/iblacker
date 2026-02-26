@@ -1,3 +1,4 @@
+import Image from "next/image";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -17,7 +18,10 @@ export default async function HomePage() {
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/10" />
             <div>
-              <div className="text-lg font-semibold leading-tight">IBlacker</div>
+              <div className="flex items-center gap-2">
+  <Image src="/brand/logo.png" alt="IBlacker" width={24} height={24} priority />
+  <div className="text-lg font-semibold leading-tight">IBlacker</div>
+</div>
               <div className="text-xs text-white/60">Master AI Platform</div>
             </div>
           </div>

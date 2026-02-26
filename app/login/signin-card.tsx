@@ -1,3 +1,4 @@
+import Image from "next/image";
 "use client";
 
 import { signIn } from "next-auth/react";
@@ -6,7 +7,10 @@ export default function SignInCard() {
   return (
     <main className="min-h-screen bg-black text-white flex items-center justify-center">
       <div className="bg-white/5 border border-white/10 rounded-2xl p-8 w-[380px] shadow-2xl">
-        <h1 className="text-xl font-semibold">IBlacker</h1>
+        <div className="flex items-center justify-center gap-2">
+  <Image src="/brand/logo.png" alt="IBlacker" width={28} height={28} priority />
+  <h1 className="text-xl font-semibold">IBlacker</h1>
+</div>
         <p className="mt-2 text-sm text-white/60">Sign in to your AI workspace</p>
 
         <button

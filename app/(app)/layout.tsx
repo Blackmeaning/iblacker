@@ -1,3 +1,4 @@
+import Image from "next/image";
 import { requireSession } from "@/lib/requireSession";
 import Link from "next/link";
 import { LogOut } from "lucide-react";
@@ -17,7 +18,10 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-3 px-2 py-2">
               <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/10" />
               <div>
-                <div className="font-semibold leading-tight">IBlacker</div>
+                <div className="flex items-center gap-2">
+  <Image src="/brand/logo.png" alt="IBlacker" width={22} height={22} priority />
+  <div className="font-semibold leading-tight">IBlacker</div>
+</div>
                 <div className="text-xs text-white/60">Master AI Platform</div>
               </div>
             </div>
