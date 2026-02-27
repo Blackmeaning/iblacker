@@ -5,6 +5,6 @@ import { SignInCard } from "./signin-card";
 
 export default async function LoginPage() {
   const session = await getServerSession(authOptions);
-  if (session) redirect("/dashboard");
+  if (session?.user) redirect("/dashboard");
   return <SignInCard />;
 }
