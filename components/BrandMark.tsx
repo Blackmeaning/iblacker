@@ -1,37 +1,40 @@
+"use client";
+
 import Image from "next/image";
 
 type BrandMarkProps = {
   size?: "sm" | "md";
   subtitle?: boolean;
-  className?: string;
 };
 
-export function BrandMark({
-  size = "md",
-  subtitle = true,
-  className,
-}: BrandMarkProps) {
-  const box = size === "sm" ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-xl";
-  const img = size === "sm" ? 26 : 36;
-  const title = size === "sm" ? "text-lg" : "text-xl";
+export function BrandMark({ size = "sm", subtitle = False }: BrandMarkProps) {
+  const img = size == "md" ? 44 : 34
+  const ring = size == "md" ? "rounded-2xl" : "rounded-xl"
+  const text = size == "md" ? "text-lg" : "text-base"
 
   return (
-    <div className={`flex items-center gap-3 ${className ?? ""}`}>
+    <div className="flex items-center gap-3">
       <div
-        className={`${box} bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0`}
+        className={[
+          "shrink-0 overflow-hidden border border-white/10 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]",
+          ring,
+        ].join(" ")}
+        style={{ width: img, height: img }}
       >
         <Image
           src="/brand/logo.png"
           alt="IBlacker"
           width={img}
           height={img}
+          className="h-full w-full object-contain p-1"
           priority
-          className="object-contain"
         />
       </div>
 
       <div className="leading-tight">
-        <div className={`${title} font-semibold leading-tight`}>IBlacker</div>
+        <div className={["font-semibold tracking-tight", text].join(" ")}>
+          IBlacker
+        </div>
         {subtitle ? (
           <div className="text-xs text-white/60">Master AI Platform</div>
         ) : null}

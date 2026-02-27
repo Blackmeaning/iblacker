@@ -1,3 +1,5 @@
+"use client";
+
 import { ReactNode } from "react";
 import Link from "next/link";
 import { BrandMark } from "@/components/BrandMark";
@@ -22,11 +24,9 @@ export function AppShell({
       <div className="relative mx-auto max-w-7xl px-4 py-6">
         <div className="grid gap-6 md:grid-cols-[280px_1fr]">
           {/* Sidebar */}
-          <aside className="h-[calc(100vh-48px)] sticky top-6 rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_0_90px_rgba(255,255,255,0.06)] overflow-hidden">
+          <aside className="h-[calc(100vh-48px)] sticky top-6 rounded-3xl border border-white/10 bg-white/[0.05] backdrop-blur-xl shadow-[0_0_90px_rgba(255,255,255,0.06)] overflow-hidden flex flex-col">
             <div className="p-5 border-b border-white/10">
-              <div className="flex items-center justify-between">
-                <BrandMark size="md" subtitle />
-              </div>
+              <BrandMark size="md" subtitle />
             </div>
 
             <nav className="p-3 space-y-1">
@@ -41,13 +41,13 @@ export function AppShell({
             <div className="mt-auto p-4 border-t border-white/10">
               <div className="rounded-2xl border border-white/10 bg-black/30 px-4 py-3">
                 <div className="text-[11px] text-white/50">Signed in</div>
-                <div className="text-sm font-medium truncate">{userEmail or "—"}</div>
+                <div className="text-sm font-medium truncate">{userEmail || "—"}</div>
               </div>
 
-              <div className="mt-3 flex gap-2">
+              <div className="mt-3">
                 <Link
                   href="/api/auth/signout"
-                  className="w-full text-center rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] transition"
+                  className="block w-full text-center rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-white/70 hover:text-white hover:bg-white/[0.08] transition"
                 >
                   Sign out
                 </Link>
@@ -55,24 +55,16 @@ export function AppShell({
             </div>
           </aside>
 
-          {/* Main content */}
+          {/* Main */}
           <section className="min-h-[calc(100vh-48px)] rounded-3xl border border-white/10 bg-white/[0.03] backdrop-blur-xl shadow-[0_0_90px_rgba(255,255,255,0.04)] overflow-hidden">
-            {/* Topbar */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-white/10">
-              <div className="text-sm text-white/60">
-                Master AI Platform
-              </div>
-
-              <div className="flex items-center gap-2">
-                <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
-                  Production
-                </div>
+              <div className="text-sm text-white/60">Master AI Platform</div>
+              <div className="rounded-full bg-white/10 px-3 py-1 text-xs text-white/70">
+                Production
               </div>
             </div>
 
-            <div className="p-6">
-              {children}
-            </div>
+            <div className="p-6">{children}</div>
           </section>
         </div>
       </div>
