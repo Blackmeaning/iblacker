@@ -65,3 +65,21 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "chat_failed", detail: msg }, { status: 500 });
   }
 }
+
+const creditsUsed = Math.ceil((tokensIn + tokensOut) / 1000);
+
+const user = await prisma.user.findUnique({ where: { id: userId } });
+
+if (!user || user.creditsBalance < creditsUsed) {
+  return NextResponse.json(
+    { error: "insufficient_credits" },
+    { status: 402 }
+  );
+}
+
+await prisma.user.update({
+  where: { id: userId },
+  data: {
+    creditsBalance: { decrement: creditsUsed },
+  },
+});

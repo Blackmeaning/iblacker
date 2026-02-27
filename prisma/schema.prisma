@@ -38,6 +38,14 @@ model User {
   role          Role      @default(USER)
 
   stripeCustomerId String?  @unique
+
+  // MONEY ENGINE
+  plan              String   @default("FREE")
+  creditsBalance    Int      @default(50)
+  monthlyCredits    Int      @default(50)
+  autoTopUp         Boolean  @default(false)
+  autoTopUpAmount   Int      @default(0)
+
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
