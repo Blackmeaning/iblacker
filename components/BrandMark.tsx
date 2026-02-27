@@ -6,7 +6,11 @@ type BrandMarkProps = {
   className?: string;
 };
 
-export function BrandMark({ size = "md", subtitle = true, className }: BrandMarkProps) {
+export function BrandMark({
+  size = "md",
+  subtitle = true,
+  className,
+}: BrandMarkProps) {
   const box = size === "sm" ? "h-10 w-10 rounded-xl" : "h-11 w-11 rounded-xl";
   const img = size === "sm" ? 26 : 28;
   const title = size === "sm" ? "text-lg" : "text-xl";
@@ -28,7 +32,9 @@ export function BrandMark({ size = "md", subtitle = true, className }: BrandMark
 
       <div className="leading-tight">
         <div className={`${title} font-semibold leading-tight`}>IBlacker</div>
-        {subtitle ? <div className="text-xs text-white/60">Master AI Platform</div> : null}
+        {subtitle ? (
+          <div className="text-xs text-white/60">Master AI Platform</div>
+        ) : null}
       </div>
     </div>
   );
