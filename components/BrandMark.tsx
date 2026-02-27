@@ -11,8 +11,8 @@ export function BrandMark({
   subtitle = true,
   className,
 }: BrandMarkProps) {
-  const box = size === "sm" ? "h-10 w-10 rounded-xl" : "h-11 w-11 rounded-xl";
-  const img = size === "sm" ? 26 : 28;
+  const box = size === "sm" ? "h-10 w-10 rounded-xl" : "h-12 w-12 rounded-xl";
+  const img = size === "sm" ? 26 : 36;
   const title = size === "sm" ? "text-lg" : "text-xl";
 
   return (
