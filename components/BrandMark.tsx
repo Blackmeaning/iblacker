@@ -7,10 +7,10 @@ type BrandMarkProps = {
   subtitle?: boolean;
 };
 
-export function BrandMark({ size = "sm", subtitle = False }: BrandMarkProps) {
-  const img = size == "md" ? 44 : 34
-  const ring = size == "md" ? "rounded-2xl" : "rounded-xl"
-  const text = size == "md" ? "text-lg" : "text-base"
+export function BrandMark({ size = "sm", subtitle = false }: BrandMarkProps) {
+  const img = size === "md" ? 44 : 34;
+  const ring = size === "md" ? "rounded-2xl" : "rounded-xl";
+  const text = size === "md" ? "text-lg" : "text-base";
 
   return (
     <div className="flex items-center gap-3">
