@@ -1,85 +1,77 @@
 import { NextResponse } from "next/server";
 import { openai } from "@/lib/openai";
+import { prisma } from "@/lib/prisma";
 import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
+export const dynamic = "force-dynamic";
 
-type ChatRole = "system" | "user" | "assistant";
-type ChatMessage = { role: ChatRole; content: string };
+const FREE_GEN_LIMIT_PER_MONTH = 20; // change later
 
-function isRecord(v: unknown): v is Record<string, unknown> {
-  return typeof v === "object" && v !== null;
+function monthKey(d = new Date()) {
+  const y = d.getUTCFullYear();
+  const m = String(d.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
 }
 
-function isChatRole(v: unknown): v is ChatRole {
-  return v === "system" || v === "user" || v === "assistant";
-}
-
-function parseMessages(input: unknown): ChatMessage[] | null {
-  if (!Array.isArray(input)) return null;
-  const out: ChatMessage[] = [];
-
-  for (const item of input) {
-    if (!isRecord(item)) return null;
-    const role = item["role"];
-    const content = item["content"];
-    if (!isChatRole(role)) return null;
-    if (typeof content !== "string") return null;
-    const trimmed = content.trim();
-    if (trimmed.length === 0) return null;
-    out.push({ role, content: trimmed });
-  }
-
-  return out;
+async function isProUser(userId: string) {
+  const sub = await prisma.subscription.findUnique({ where: { userId } });
+  if (!sub) return false
+  const active = sub.status === "active";
+  if (!active) return false;
+  if (sub.currentPeriodEnd && sub.currentPeriodEnd < new Date()) return false;
+  return true;
 }
 
 export async function POST(req: Request) {
   try {
-    await requireUserId();
+    const userId = await requireUserId();
 
-    const body: unknown = await req.json().catch(() => null);
-    if (!isRecord(body)) return NextResponse.json({ error: "bad_body" }, { status: 400 });
+    const body = (await req.json()) as { messages?: Array<{ role: "user" | "assistant"; content: string }> };
+    const messages = body.messages ?? [];
 
-    const messages = parseMessages(body["messages"]);
-    if (!messages || messages.length === 0) {
-      return NextResponse.json({ error: "messages_required" }, { status: 400 });
+    if (messages.length === 0) {
+      return NextResponse.json({ error: "missing_messages" }, { status: 400 });
     }
+
+    const pro = await isProUser(userId);
+
+    if (!pro) {
+      const period = monthKey();
+      const usage = await prisma.usage.upsert({
+        where: { userId_period: { userId, period } },
+        update: {},
+        create: { userId, period, generations: 0, tokensIn: 0, tokensOut: 0 },
+      });
+
+      if (usage.generations >= FREE_GEN_LIMIT_PER_MONTH) {
+        return NextResponse.json(
+          { error: "upgrade_required", detail: "Free monthly limit reached. Upgrade to Pro to continue." },
+          { status: 402 }
+        );
+      }
+
+      await prisma.usage.update({
+        where: { id: usage.id },
+        data: { generations: { increment: 1 } },
+      });
+    }
+
+    const system = [
+      "You are IBlacker AI. Be concise, practical, and intelligent.",
+      "If discussing investing: educational only (not financial advice). Mention risk briefly.",
+    ].join(" ");
 
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
-      temperature: 0.3,
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are IBlacker AI. Be concise, practical, and intelligent. If discussing investing, focus on education and include a short risk disclaimer.",
-        },
-        ...messages,
-      ],
+      messages: [{ role: "system", content: system }, ...messages],
+      temperature: 0.7,
     });
 
-    const reply = completion.choices[0]?.message?.content ?? "";
-    return NextResponse.json({ ok: true, message: reply });
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : "chat_failed";
+    const text = completion.choices[0]?.message?.content ?? "";
+    return NextResponse.json({ text });
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : "unknown_error";
     return NextResponse.json({ error: "chat_failed", detail: msg }, { status: 500 });
   }
 }
-
-const creditsUsed = Math.ceil((tokensIn + tokensOut) / 1000);
-
-const user = await prisma.user.findUnique({ where: { id: userId } });
-
-if (!user || user.creditsBalance < creditsUsed) {
-  return NextResponse.json(
-    { error: "insufficient_credits" },
-    { status: 402 }
-  );
-}
-
-await prisma.user.update({
-  where: { id: userId },
-  data: {
-    creditsBalance: { decrement: creditsUsed },
-  },
-});

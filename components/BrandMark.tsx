@@ -1,22 +1,22 @@
-"use client";
-
 import Image from "next/image";
 
 type BrandMarkProps = {
   size?: "sm" | "md";
   subtitle?: boolean;
+  className?: string;
 };
 
-export function BrandMark({ size = "sm", subtitle = false }: BrandMarkProps) {
+export function BrandMark({ size = "sm", subtitle = false, className }: BrandMarkProps) {
   const img = size === "md" ? 44 : 34;
   const ring = size === "md" ? "rounded-2xl" : "rounded-xl";
-  const text = size === "md" ? "text-lg" : "text-base";
+  const title = size === "md" ? "text-lg" : "text-base";
+  const sub = size === "md" ? "text-sm" : "text-xs";
 
   return (
-    <div className="flex items-center gap-3">
+    <div className={["flex items-center gap-3", className ?? ""].join(" ")}>
       <div
         className={[
-          "shrink-0 overflow-hidden border border-white/10 bg-white/[0.06] shadow-[0_0_0_1px_rgba(255,255,255,0.04)]",
+          "shrink-0 overflow-hidden border border-white/10 bg-white/[0.03] shadow-sm",
           ring,
         ].join(" ")}
         style={{ width: img, height: img }}
@@ -26,18 +26,14 @@ export function BrandMark({ size = "sm", subtitle = false }: BrandMarkProps) {
           alt="IBlacker"
           width={img}
           height={img}
-          className="h-full w-full object-contain p-1"
+          className="h-full w-full object-cover"
           priority
         />
       </div>
 
       <div className="leading-tight">
-        <div className={["font-semibold tracking-tight", text].join(" ")}>
-          IBlacker
-        </div>
-        {subtitle ? (
-          <div className="text-xs text-white/60">Master AI Platform</div>
-        ) : null}
+        <div className={["font-semibold tracking-tight", title].join(" ")}>IBlacker</div>
+        {subtitle ? <div className={["text-white/60", sub].join(" ")}>Master AI Platform</div> : null}
       </div>
     </div>
   );

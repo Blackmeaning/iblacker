@@ -212,3 +212,28 @@ model ProjectExport {
   @@index([userId, createdAt])
   @@index([projectId, createdAt])
 }
+
+
+enum CreditTxType {
+  PURCHASE
+  SUBSCRIPTION_GRANT
+  USAGE
+  ADJUSTMENT
+  REFUND
+}
+
+model CreditLedger {
+  id        String      @id @default(cuid())
+  userId    String
+  type      CreditTxType
+  amount    Int         // +credits added, -credits spent
+  memo      String?
+  stripeEventId   String?
+  stripeSessionId String?
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@unique([stripeEventId])
+}
