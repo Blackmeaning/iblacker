@@ -37,17 +37,17 @@ model User {
   image         String?
   role          Role      @default(USER)
 
-  stripeCustomerId String?  @unique
+  stripeCustomerId String? @unique
 
   // MONEY ENGINE
-  plan              String   @default("FREE")
-  creditsBalance    Int      @default(50)
-  monthlyCredits    Int      @default(50)
-  autoTopUp         Boolean  @default(false)
-  autoTopUpAmount   Int      @default(0)
+  plan            String  @default("FREE")
+  creditsBalance  Int     @default(50)
+  monthlyCredits  Int     @default(50)
+  autoTopUp       Boolean @default(false)
+  autoTopUpAmount Int     @default(0)
 
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   accounts       Account[]
   sessions       Session[]
@@ -57,6 +57,7 @@ model User {
   usage          Usage[]
   generationLogs GenerationLog[]
   projectExports ProjectExport[]
+  creditLedger   CreditLedger[]
 }
 
 model Account {
@@ -213,7 +214,6 @@ model ProjectExport {
   @@index([projectId, createdAt])
 }
 
-
 enum CreditTxType {
   PURCHASE
   SUBSCRIPTION_GRANT
@@ -223,17 +223,17 @@ enum CreditTxType {
 }
 
 model CreditLedger {
-  id        String      @id @default(cuid())
-  userId    String
-  type      CreditTxType
-  amount    Int         // +credits added, -credits spent
-  memo      String?
+  id              String       @id @default(cuid())
+  userId          String
+  type            CreditTxType
+  amount          Int // +credits added, -credits spent
+  memo            String?
   stripeEventId   String?
   stripeSessionId String?
-  createdAt DateTime @default(now())
+  createdAt       DateTime     @default(now())
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@index([userId, createdAt])
   @@unique([stripeEventId])
+  @@index([userId, createdAt])
 }
