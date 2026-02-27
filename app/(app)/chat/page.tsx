@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 
 type ChatRole = "user" | "assistant";
 type ChatMessage = { role: ChatRole; content: string };
@@ -13,13 +13,6 @@ export default function ChatPage() {
   ]);
 
   const canSend = text.trim().length > 0 && !sending;
-
-  const lastAssistant = useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messages[i].content;
-    }
-    return null;
-  }, [messages]);
 
   async function send() {
     if (!canSend) return;
@@ -44,7 +37,7 @@ export default function ChatPage() {
 
       const reply = typeof data?.reply === "string" ? data.reply : "(empty reply)";
       setMessages((m) => [...m, { role: "assistant", content: reply }]);
-    } catch (e: any) {
+    } catch (err: unknown) {
       setMessages((m) => [
         ...m,
         {
@@ -98,11 +91,11 @@ export default function ChatPage() {
           <div className="flex gap-3">
             <textarea
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(_e) => setText(e.target.value)}
               placeholder="Type a message…"
               className="flex-1 resize-none rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/20 focus:bg-black/50"
               rows={2}
-              onKeyDown={(e) => {
+              onKeyDown={(_e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
                   send();
