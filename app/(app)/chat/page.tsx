@@ -5,19 +5,48 @@ import { useState } from "react";
 type ChatRole = "user" | "assistant";
 type ChatMessage = { role: ChatRole; content: string };
 
+type ChatApiResponse =
+  | { reply: string }
+  | { error: string; detail?: string };
+
+function isRecord(v: unknown): v is Record<string, unknown> {
+  return typeof v === "object" && v !== null;
+}
+
+function parseChatResponse(raw: unknown): ChatApiResponse {
+  if (!isRecord(raw)) return { error: "bad_response" };
+
+  const reply = raw["reply"];
+  if (typeof reply === "string") return { reply };
+
+  const error = raw["error"];
+  const detail = raw["detail"];
+  if (typeof error === "string") {
+    return {
+      error,
+      detail: typeof detail === "string" ? detail : undefined,
+    };
+  }
+
+  return { error: "bad_response" };
+}
+
 export default function ChatPage() {
-  const [text, setText] = useState("");
-  const [sending, setSending] = useState(false);
+  const [text, setText] = useState<string>("");
+  const [sending, setSending] = useState<boolean>(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: "assistant", content: "Hi — tell me what you want to build today." },
   ]);
 
   const canSend = text.trim().length > 0 && !sending;
 
-  async function send() {
+  async function send(): Promise<void> {
     if (!canSend) return;
+
     const userMessage: ChatMessage = { role: "user", content: text.trim() };
-    setMessages((m) => [...m, userMessage]);
+    const nextMessages = [...messages, userMessage];
+
+    setMessages(nextMessages);
     setText("");
     setSending(true);
 
@@ -25,25 +54,30 @@ export default function ChatPage() {
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ messages: [...messages, userMessage] }),
+        body: JSON.stringify({ messages: nextMessages }),
       });
 
-      const data = await res.json().catch(() => ({}));
+      const raw = await res.json().catch(() => null);
+      const data = parseChatResponse(raw);
 
       if (!res.ok) {
-        const detail = typeof data?.detail === "string" ? ` — ${data.detail}` : "";
-        throw new Error((data?.error || "chat_failed") + detail);
+        const detail = "detail" in data && typeof data.detail === "string" ? ` — ${data.detail}` : "";
+        const code = "error" in data && typeof data.error === "string" ? data.error : "chat_failed";
+        throw new Error(code + detail);
       }
 
-      const reply = typeof data?.reply === "string" ? data.reply : "(empty reply)";
-      setMessages((m) => [...m, { role: "assistant", content: reply }]);
-    } catch (err: unknown) {
+      if (!("reply" in data)) {
+        throw new Error("bad_response");
+      }
+
+      setMessages((m) => [...m, { role: "assistant", content: data.reply }]);
+    } catch {
       setMessages((m) => [
         ...m,
         {
           role: "assistant",
           content:
-            "⚠️ Something failed. Open DevTools → Network → /api/chat and copy the error here.",
+            "⚠️ Chat failed. Open DevTools → Network → /api/chat and copy the error response here.",
         },
       ]);
     } finally {
@@ -65,13 +99,7 @@ export default function ChatPage() {
           {messages.map((m, idx) => {
             const isUser = m.role === "user";
             return (
-              <div
-                key={idx}
-                className={[
-                  "flex",
-                  isUser ? "justify-end" : "justify-start",
-                ].join(" ")}
-              >
+              <div key={idx} className={isUser ? "flex justify-end" : "flex justify-start"}>
                 <div
                   className={[
                     "max-w-[78%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap",
@@ -91,20 +119,20 @@ export default function ChatPage() {
           <div className="flex gap-3">
             <textarea
               value={text}
-              onChange={(_e) => setText(e.target.value)}
+              onChange={(e) => setText(e.target.value)}
               placeholder="Type a message…"
               className="flex-1 resize-none rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white placeholder:text-white/40 outline-none focus:border-white/20 focus:bg-black/50"
               rows={2}
-              onKeyDown={(_e) => {
+              onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
                   e.preventDefault();
-                  send();
+                  void send();
                 }
               }}
             />
 
             <button
-              onClick={send}
+              onClick={() => void send()}
               disabled={!canSend}
               className={[
                 "rounded-2xl px-5 py-3 text-sm font-medium transition",
