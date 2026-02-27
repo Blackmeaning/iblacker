@@ -3,6 +3,7 @@ import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { redirect } from "next/navigation";
+import { BrandMark } from "@/components/BrandMark";
 
 export default async function HomePage() {
   const session = await getServerSession(authOptions);
@@ -15,20 +16,8 @@ export default async function HomePage() {
     <main className="min-h-screen bg-black text-white">
       <div className="mx-auto max-w-6xl px-6 py-16">
         <header className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-white/10 border border-white/10" />
-            <div>
-              <div className="flex items-center gap-3">
-  <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
-    <Image src="/brand/logo.png" alt="IBlacker" width={26} height={26} priority className="object-contain" />
-  </div>
-  <div className="leading-tight">
-    <div className="flex items-center gap-3">
-  <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
-    <Image src="/brand/logo.png" alt="IBlacker" width={26} height={26} priority className="object-contain" />
-  </div>
-  <div className="leading-tight">
-    <div className="text-lg font-semibold leading-tight">IBlacker</div>
+  <BrandMark size="sm" />
+</div>
     <div className="text-xs text-white/60">Master AI Platform</div>
   </div>
 </div>
