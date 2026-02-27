@@ -18,9 +18,14 @@ export default async function AppLayout({ children }: { children: React.ReactNod
             <div className="flex items-center gap-3 px-2 py-2">
               <div className="h-9 w-9 rounded-xl bg-white/10 border border-white/10" />
               <div>
-                <div className="flex items-center gap-2">
-  <Image src="/brand/logo.png" alt="IBlacker" width={22} height={22} priority />
-  <div className="font-semibold leading-tight">IBlacker</div>
+                <div className="flex items-center gap-3">
+  <div className="h-10 w-10 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+    <Image src="/brand/logo.png" alt="IBlacker" width={26} height={26} priority className="object-contain" />
+  </div>
+  <div className="leading-tight">
+    <div className="font-semibold">IBlacker</div>
+    <div className="text-xs text-white/60">Master AI Platform</div>
+  </div>
 </div>
                 <div className="text-xs text-white/60">Master AI Platform</div>
               </div>
