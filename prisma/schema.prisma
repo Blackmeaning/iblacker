@@ -37,7 +37,8 @@ model User {
   image         String?
   role          Role      @default(USER)
 
-  stripeCustomerId String? @unique
+  stripeCustomerId   String? @unique
+  autoTopUpThreshold Int     @default(2000)
 
   // MONEY ENGINE
   plan            String  @default("FREE")
