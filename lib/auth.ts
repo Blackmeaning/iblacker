@@ -3,29 +3,58 @@ import GoogleProvider from "next-auth/providers/google";
 import { PrismaAdapter } from "@next-auth/prisma-adapter";
 import { prisma } from "@/lib/prisma";
 
-function requireEnv(name: string): string {
+function env(name: string): string | undefined {
   const v = process.env[name];
-  if (!v) throw new Error(`Missing env var: ${name}`);
-  return v;
+  return typeof v === "string" && v.length > 0 ? v : undefined;
 }
 
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(prisma),
+
+  // keep DB sessions (fine)
   session: { strategy: "database" },
-  secret: requireEnv("NEXTAUTH_SECRET"),
+
+  // IMPORTANT: do not throw at import-time. Missing env will show in logs instead.
+  secret: env("NEXTAUTH_SECRET"),
+
   providers: [
     GoogleProvider({
-      clientId: requireEnv("GOOGLE_CLIENT_ID"),
-      clientSecret: requireEnv("GOOGLE_CLIENT_SECRET"),
+      clientId: env("GOOGLE_CLIENT_ID") ?? "",
+      clientSecret: env("GOOGLE_CLIENT_SECRET") ?? "",
     }),
   ],
+
+  pages: { signIn: "/login" },
+
   callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Always keep www to prevent callbackUrl mismatch loops
+      const wwwBase = "https://www.iblacker.com";
+      if (url.startsWith("/")) return wwwBase + url;
+      if (url.startsWith(wwwBase)) return url;
+      if (url.startsWith(baseUrl)) return url.replace(baseUrl, wwwBase);
+      return wwwBase;
+    },
+
     async session({ session, user }) {
-      // thanks to module augmentation in types/next-auth.d.ts, these fields are typed
+      // your typed augmentation assumed
       session.user.id = user.id;
       session.user.role = user.role;
       return session;
     },
   },
-  pages: { signIn: "/login" },
+
+  // Debug logs in Vercel
+  debug: true,
+  logger: {
+    error(code, metadata) {
+      console.error("NEXTAUTH_ERROR", code, metadata);
+    },
+    warn(code) {
+      console.warn("NEXTAUTH_WARN", code);
+    },
+    debug(code, metadata) {
+      console.log("NEXTAUTH_DEBUG", code, metadata);
+    },
+  },
 };
