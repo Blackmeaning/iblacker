@@ -59,6 +59,8 @@ model User {
   generationLogs GenerationLog[]
   projectExports ProjectExport[]
   creditLedger   CreditLedger[]
+  paypalSubscriptionId String?
+  subscriptionStatus   String  ("INACTIVE")
 }
 
 model Account {

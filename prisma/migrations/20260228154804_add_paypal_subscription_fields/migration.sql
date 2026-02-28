@@ -1,0 +1,5 @@
+ALTER TABLE "User"
+  ADD COLUMN IF NOT EXISTS "paypalSubscriptionId" TEXT;
+
+ALTER TABLE "User"
+  ADD COLUMN IF NOT EXISTS "subscriptionStatus" TEXT NOT NULL DEFAULT 'INACTIVE';
