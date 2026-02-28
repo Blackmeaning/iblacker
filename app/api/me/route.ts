@@ -4,84 +4,74 @@ import { requireUserId } from "@/lib/currentUser";
 
 export const runtime = "nodejs";
 
-type PatchBody = {
-  name?: string;
-  autoTopUp?: boolean;
-  autoTopUpThreshold?: number;
-  autoTopUpAmount?: number;
-};
-
 function toInt(v: unknown, fallback: number): number {
-  if (typeof v === "number" && Number.isFinite(v)) return Math.trunc(v);
-  if (typeof v === "string" && v.trim() !== "" && Number.isFinite(Number(v))) return Math.trunc(Number(v));
+  const n = typeof v === "number" ? v : typeof v === "string" ? Number(v) : NaN;
+  if (!Number.isFinite(n)) return fallback;
+  return Math.trunc(n);
+}
+
+function parseBool(v: unknown, fallback: boolean): boolean {
+  if (typeof v === "boolean") return v;
+  if (typeof v === "string") {
+    const s = v.toLowerCase();
+    if (s === "true") return true;
+    if (s === "false") return false;
+  }
   return fallback;
 }
 
 export async function GET() {
   const userId = await requireUserId();
 
-  const user = await prisma.user.findUnique({
+  const u = await prisma.user.findUnique({
     where: { id: userId },
     select: {
       id: true,
-      name: true,
       email: true,
+      name: true,
       image: true,
       role: true,
-      createdAt: true,
+
       plan: true,
       creditsBalance: true,
       monthlyCredits: true,
+
       autoTopUp: true,
       autoTopUpThreshold: true,
       autoTopUpAmount: true,
+
+      stripeCustomerId: true,
+      subscription: {
+        select: {
+          status: true,
+          stripePriceId: true,
+          currentPeriodEnd: true,
+        },
+      },
+      createdAt: true,
     },
   });
 
-  return NextResponse.json({ user });
+  if (!u) return NextResponse.json({ error: "not_found" }, { status: 404 });
+  return NextResponse.json({ user: u });
 }
 
 export async function PATCH(req: Request) {
   const userId = await requireUserId();
+  const body = (await req.json().catch(() => ({}))) as Record<string, unknown>;
 
-  let body: PatchBody = {};
-  try {
-    body = (await req.json()) as PatchBody;
-  } catch {
-    return NextResponse.json({ error: "invalid_json" }, { status: 400 });
-  }
+  const autoTopUp = parseBool(body.autoTopUp, false);
+  const autoTopUpThreshold = Math.max(0, toInt(body.autoTopUpThreshold, 2000));
+  const autoTopUpAmount = Math.max(0, toInt(body.autoTopUpAmount, 10000));
 
-  const data: {
-    name?: string;
-    autoTopUp?: boolean;
-    autoTopUpThreshold?: number;
-    autoTopUpAmount?: number;
-  } = {};
-
-  if (typeof body.name === "string") data.name = body.name.trim().slice(0, 80);
-
-  if (typeof body.autoTopUp === "boolean") data.autoTopUp = body.autoTopUp;
-
-  if (body.autoTopUpThreshold !== undefined) {
-    const th = toInt(body.autoTopUpThreshold, 2000);
-    data.autoTopUpThreshold = Math.max(0, Math.min(th, 1_000_000));
-  }
-
-  if (body.autoTopUpAmount !== undefined) {
-    const am = toInt(body.autoTopUpAmount, 10000);
-    data.autoTopUpAmount = Math.max(0, Math.min(am, 5_000_000));
-  }
-
-  const user = await prisma.user.update({
+  const u = await prisma.user.update({
     where: { id: userId },
-    data,
+    data: {
+      autoTopUp,
+      autoTopUpThreshold,
+      autoTopUpAmount,
+    },
     select: {
-      id: true,
-      name: true,
-      email: true,
-      image: true,
-      role: true,
-      createdAt: true,
       plan: true,
       creditsBalance: true,
       monthlyCredits: true,
@@ -91,5 +81,5 @@ export async function PATCH(req: Request) {
     },
   });
 
-  return NextResponse.json({ ok: true, user });
+  return NextResponse.json({ ok: true, user: u });
 }
