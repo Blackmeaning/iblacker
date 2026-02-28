@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json({ approveUrl: approve });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "create-subscription failed" }, { status: 500 });
+  } catch (e: unknown) {
+    return NextResponse.json({ error: (e instanceof Error ? e.message : "create-subscription failed") }, { status: 500 });
   }
 }
