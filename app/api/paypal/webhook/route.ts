@@ -4,7 +4,25 @@ import { verifyPayPalWebhook, paypalFetch } from "@/lib/paypal";
 
 export const runtime = "nodejs";
 
-type AnyObj = Record<string, any>;
+type JsonObject = Record<string, unknown>;
+
+function asObj(v: unknown): JsonObject | null {
+  return v && typeof v === "object" && !Array.isArray(v) ? (v as JsonObject) : null;
+}
+
+function asStr(v: unknown): string {
+  return typeof v === "string" ? v : "";
+}
+
+function path(v: unknown, keys: string[]): unknown {
+  let cur: unknown = v;
+  for (const k of keys) {
+    const o = asObj(cur);
+    if (!o) return undefined;
+    cur = o[k];
+  }
+  return cur;
+}
 
 function tierToMonthlyCredits(tier: string): number {
   if (tier === "ELITE") return 200_000;
@@ -14,28 +32,22 @@ function tierToMonthlyCredits(tier: string): number {
 
 export async function POST(req: Request) {
   const rawBody = await req.text();
-  const headers = new Headers(req.headers);
-
-  const ok = await verifyPayPalWebhook(rawBody, headers);
+  const ok = await verifyPayPalWebhook(rawBody, new Headers(req.headers));
   if (!ok) return NextResponse.json({ error: "invalid webhook signature" }, { status: 400 });
 
-  const event = JSON.parse(rawBody) as AnyObj;
-  const type = String(event.event_type || "");
+  const eventUnknown: unknown = JSON.parse(rawBody);
+  const event = asObj(eventUnknown);
+  const type = asStr(event?.["event_type"]);
 
   try {
-    // ---- SUBSCRIPTION ACTIVATED ----
+    // SUBSCRIPTION ACTIVATED
     if (type === "BILLING.SUBSCRIPTION.ACTIVATED") {
-      const sub = event.resource as AnyObj;
-      const paypalSubscriptionId = String(sub.id || "");
-      const userId = String(sub.custom_id || "");
-
+      const res = asObj(event?.["resource"]);
+      const paypalSubscriptionId = asStr(res?.["id"]);
+      const userId = asStr(res?.["custom_id"]);
       if (!paypalSubscriptionId || !userId) return NextResponse.json({ ok: true });
 
-      const user = await prisma.user.findUnique({
-        where: { id: userId },
-        select: { plan: true },
-      });
-
+      const user = await prisma.user.findUnique({ where: { id: userId }, select: { plan: true } });
       const tier = user?.plan ?? "PRO";
       const monthlyCredits = tierToMonthlyCredits(tier);
 
@@ -44,7 +56,7 @@ export async function POST(req: Request) {
         data: {
           subscriptionStatus: "ACTIVE",
           monthlyCredits,
-          creditsBalance: monthlyCredits, // reset monthly
+          creditsBalance: monthlyCredits,
           paypalSubscriptionId,
         },
       });
@@ -52,10 +64,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ---- SUBSCRIPTION CANCELLED / SUSPENDED ----
+    // SUBSCRIPTION CANCELLED / SUSPENDED
     if (type === "BILLING.SUBSCRIPTION.CANCELLED" || type === "BILLING.SUBSCRIPTION.SUSPENDED") {
-      const sub = event.resource as AnyObj;
-      const userId = String(sub.custom_id || "");
+      const res = asObj(event?.["resource"]);
+      const userId = asStr(res?.["custom_id"]);
       if (!userId) return NextResponse.json({ ok: true });
 
       await prisma.user.update({
@@ -70,38 +82,28 @@ export async function POST(req: Request) {
       return NextResponse.json({ ok: true });
     }
 
-    // ---- PAYMENT CAPTURE COMPLETED (credit packs) ----
-    // Some accounts send PAYMENT.CAPTURE.COMPLETED, some PAYMENT.SALE.COMPLETED.
+    // CREDIT PACKS: capture completed
     if (type === "PAYMENT.CAPTURE.COMPLETED" || type === "PAYMENT.SALE.COMPLETED") {
-      const res = event.resource as AnyObj;
+      const res = asObj(event?.["resource"]);
 
-      // Try to find userId from custom_id
-      const userId =
-        String(res.custom_id || "") ||
-        String(res?.supplementary_data?.related_ids?.order_id || "");
+      const orderId = asStr(path(res, ["supplementary_data", "related_ids", "order_id"]));
+      let userId = asStr(res?.["custom_id"]);
+      let description = asStr(res?.["description"]);
 
-      // If it’s an order, fetch order to read purchase_units[0].custom_id / description
-      let finalUserId = userId;
-      let description = "";
-
-      const orderId = String(res?.supplementary_data?.related_ids?.order_id || "");
       if (orderId) {
-        const order = await paypalFetch<AnyObj>(`/v2/checkout/orders/${orderId}`);
-        finalUserId = String(order?.purchase_units?.[0]?.custom_id || finalUserId);
-        description = String(order?.purchase_units?.[0]?.description || "");
-      } else {
-        description = String(res?.description || "");
+        const order = await paypalFetch<JsonObject>(`/v2/checkout/orders/${orderId}`);
+        userId = asStr(path(order, ["purchase_units", "0", "custom_id"])) || userId;
+        description = asStr(path(order, ["purchase_units", "0", "description"])) || description;
       }
 
-      if (!finalUserId) return NextResponse.json({ ok: true });
+      if (!userId) return NextResponse.json({ ok: true });
 
-      // parse credits from "iblacker credits: 60000"
-      const m = description.match(/credits:\s*(\d+)/i);
-      const credits = m ? Math.max(0, parseInt(m[1], 10)) : 0;
+      const match = description.match(/credits:\s*(\d+)/i);
+      const credits = match ? Math.max(0, parseInt(match[1], 10)) : 0;
       if (!credits) return NextResponse.json({ ok: true });
 
       await prisma.user.update({
-        where: { id: finalUserId },
+        where: { id: userId },
         data: { creditsBalance: { increment: credits } },
       });
 
@@ -109,7 +111,8 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ ok: true });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "webhook failed" }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "webhook failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

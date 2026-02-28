@@ -50,17 +50,17 @@ model User {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  accounts       Account[]
-  sessions       Session[]
-  projects       Project[]
-  exports        Export[]
-  subscription   Subscription?
-  usage          Usage[]
-  generationLogs GenerationLog[]
-  projectExports ProjectExport[]
-  creditLedger   CreditLedger[]
+  accounts             Account[]
+  sessions             Session[]
+  projects             Project[]
+  exports              Export[]
+  subscription         Subscription?
+  usage                Usage[]
+  generationLogs       GenerationLog[]
+  projectExports       ProjectExport[]
+  creditLedger         CreditLedger[]
   paypalSubscriptionId String?
-  subscriptionStatus   String  ("INACTIVE")
+  subscriptionStatus   String          @default("INACTIVE")
 }
 
 model Account {

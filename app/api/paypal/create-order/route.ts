@@ -48,7 +48,8 @@ export async function POST(req: Request) {
     if (!approveUrl) return NextResponse.json({ error: "Missing approve link" }, { status: 500 });
 
     return NextResponse.json({ orderId: order.id, approveUrl, credits });
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message ?? "create-order failed" }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : "create-order failed";
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

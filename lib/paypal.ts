@@ -8,24 +8,41 @@ function mustEnv(name: string): string {
   return v;
 }
 
-export const paypalEnv = {
-  apiBase: mustEnv("PAYPAL_API_BASE"),
-  clientId: mustEnv("PAYPAL_CLIENT_ID"),
-  clientSecret: mustEnv("PAYPAL_CLIENT_SECRET"),
-  webhookId: mustEnv("PAYPAL_WEBHOOK_ID"),
-  proPlanId: mustEnv("PAYPAL_PRO_PLAN_ID"),
-  elitePlanId: mustEnv("PAYPAL_ELITE_PLAN_ID"),
+export type PayPalConfig = {
+  apiBase: string;
+  clientId: string;
+  clientSecret: string;
+  webhookId: string;
+  proPlanId: string;
+  elitePlanId: string;
 };
+
+/**
+ * Lazy config getter (SAFE for Next build)
+ * Do NOT call at module scope in route files.
+ */
+export function getPayPalConfig(): PayPalConfig {
+  return {
+    apiBase: mustEnv("PAYPAL_API_BASE"),
+    clientId: mustEnv("Ac8MbYi-npYXTBWmvUH5OAThBvlRwynbULb5xwdqIFdEUlcLPbKoVrktstUrjAr8Mkls-LnqcGV5SsNp"),
+    clientSecret: mustEnv("ELKZqwqpkWZEi6TeUoq4zBDVOs3DfxwUHyD_JB9CdNXol0A-fYx4xQI6mcSAtZ5tY2VbI7C3SVWmeMg_"),
+    webhookId: mustEnv("41F48701P41445410"),
+    proPlanId: mustEnv("P-0TP08853AV6605124NGROAEQ"),
+    elitePlanId: mustEnv("P-52C61852CU667074HNGROAUY"),
+  };
+}
 
 let cachedToken: { token: string; expMs: number } | null = null;
 
 export async function getPayPalAccessToken(): Promise<string> {
+  const cfg = getPayPalConfig();
+
   const now = Date.now();
   if (cachedToken && cachedToken.expMs > now + 30_000) return cachedToken.token;
 
-  const basic = Buffer.from(`${paypalEnv.clientId}:${paypalEnv.clientSecret}`).toString("base64");
+  const basic = Buffer.from(`${cfg.clientId}:${cfg.clientSecret}`).toString("base64");
 
-  const res = await fetch(`${paypalEnv.apiBase}/v1/oauth2/token`, {
+  const res = await fetch(`${cfg.apiBase}/v1/oauth2/token`, {
     method: "POST",
     headers: {
       Authorization: `Basic ${basic}`,
@@ -46,8 +63,10 @@ export async function getPayPalAccessToken(): Promise<string> {
 }
 
 export async function paypalFetch<T = Json>(path: string, init: RequestInit = {}): Promise<T> {
+  const cfg = getPayPalConfig();
   const token = await getPayPalAccessToken();
-  const res = await fetch(`${paypalEnv.apiBase}${path}`, {
+
+  const res = await fetch(`${cfg.apiBase}${path}`, {
     ...init,
     headers: {
       Authorization: `Bearer ${token}`,
@@ -59,23 +78,30 @@ export async function paypalFetch<T = Json>(path: string, init: RequestInit = {}
 
   const text = await res.text().catch(() => "");
   if (!res.ok) throw new Error(`PayPal API error (${res.status}): ${text}`);
-
   return text ? (JSON.parse(text) as T) : ({} as T);
 }
 
-// Webhook verification
+/**
+ * Verify PayPal webhook signature (server-to-server)
+ */
 export async function verifyPayPalWebhook(rawBody: string, headers: Headers): Promise<boolean> {
-  // PayPal sends these headers for verification:
-  const transmissionId = headers.get("paypal-transmission-id") || "";
-  const transmissionTime = headers.get("paypal-transmission-time") || "";
-  const certUrl = headers.get("paypal-cert-url") || "";
-  const authAlgo = headers.get("paypal-auth-algo") || "";
-  const transmissionSig = headers.get("paypal-transmission-sig") || "";
+  const cfg = getPayPalConfig();
 
-  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) return FalseSafe();
+  const transmissionId = headers.get("paypal-transmission-id") ?? "";
+  const transmissionTime = headers.get("paypal-transmission-time") ?? "";
+  const certUrl = headers.get("paypal-cert-url") ?? "";
+  const authAlgo = headers.get("paypal-auth-algo") ?? "";
+  const transmissionSig = headers.get("paypal-transmission-sig") ?? "";
 
-  // If any header is missing, just fail verification
-  function FalseSafe() { return false; }
+  // If any header missing, verification fails
+  if (!transmissionId || !transmissionTime || !certUrl || !authAlgo || !transmissionSig) return false;
+
+  let event: unknown;
+  try {
+    event = JSON.parse(rawBody);
+  } catch {
+    return false;
+  }
 
   try {
     const payload = {
@@ -84,11 +110,11 @@ export async function verifyPayPalWebhook(rawBody: string, headers: Headers): Pr
       transmission_id: transmissionId,
       transmission_sig: transmissionSig,
       transmission_time: transmissionTime,
-      webhook_id: paypalEnv.webhookId,
-      webhook_event: JSON.parse(rawBody),
+      webhook_id: cfg.webhookId,
+      webhook_event: event,
     };
 
-    const out = await paypalFetch<{ verification_status: string }>(
+    const out = await paypalFetch<{ verification_status?: string }>(
       "/v1/notifications/verify-webhook-signature",
       { method: "POST", body: JSON.stringify(payload) }
     );
@@ -99,7 +125,9 @@ export async function verifyPayPalWebhook(rawBody: string, headers: Headers): Pr
   }
 }
 
-// deterministic idempotency key
+/**
+ * deterministic idempotency key (32 chars)
+ */
 export function idempotencyKey(input: string): string {
   return crypto.createHash("sha256").update(input).digest("hex").slice(0, 32);
 }
